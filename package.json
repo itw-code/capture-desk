@@ -1,0 +1,19 @@
+{
+  "name": "capture-desk",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Sandbox app and agent tool: a live declined capture, then a guarded AI next step no checkout screen takes.",
+  "bin": {
+    "capture-desk": "cli.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node server.js --check",
+    "cli": "node cli.js",
+    "mcp": "node mcp.js",
+    "eval": "node eval/run.mjs",
+    "check:durable": "node eval/durability-check.mjs",
+    "check:recon": "node eval/recon-check.mjs",
+    "check:tool": "node eval/tool-check.mjs"
+  }
+}

@@ -1,0 +1,670 @@
+{
+  "summary": {
+    "ran_at": "2026-10-28T18:48:51.767Z",
+    "model": "gemma-4-31b-it",
+    "mode": "judgment",
+    "reps": 2,
+    "all": {
+      "cases": 8,
+      "reps": 2,
+      "runs": 16,
+      "passes": 10,
+      "pass_rate": 0.625,
+      "cases_passed_in_every_rep": 5,
+      "cases_failed_in_every_rep": 3,
+      "cases_unstable": 0,
+      "baseline_pass_single_run": 2,
+      "vetoed": 0,
+      "fallbacks": 0,
+      "ai_errors": 0
+    },
+    "judgment_only": {
+      "cases": 8,
+      "reps": 2,
+      "runs": 16,
+      "passes": 10,
+      "pass_rate": 0.625,
+      "cases_passed_in_every_rep": 5,
+      "cases_failed_in_every_rep": 3,
+      "cases_unstable": 0,
+      "baseline_pass_single_run": 2,
+      "vetoed": 0,
+      "fallbacks": 0,
+      "ai_errors": 0
+    },
+    "non_judgment": {
+      "cases": 0,
+      "reps": 2,
+      "runs": 0,
+      "passes": 0,
+      "pass_rate": null,
+      "cases_passed_in_every_rep": 0,
+      "cases_failed_in_every_rep": 0,
+      "cases_unstable": 0,
+      "baseline_pass_single_run": 0,
+      "vetoed": 0,
+      "fallbacks": 0,
+      "ai_errors": 0
+    },
+    "wait_window": {
+      "cases": 1,
+      "reps": 2,
+      "runs": 2,
+      "passes": 2,
+      "pass_rate": 1,
+      "cases_passed_in_every_rep": 1,
+      "cases_failed_in_every_rep": 0,
+      "cases_unstable": 0,
+      "baseline_pass_single_run": 1,
+      "vetoed": 0,
+      "fallbacks": 0,
+      "ai_errors": 0
+    },
+    "unstable_cases": []
+  },
+  "results": [
+    {
+      "id": "j-other-card",
+      "judgment": true,
+      "code": "5120",
+      "attempt": 1,
+      "note": "Buyer said they'll pay with their other card.",
+      "now": null,
+      "expected": [
+        "new_checkout_link"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72
+      },
+      "baseline_pass": false,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The buyer mentioned they will use a different card for payment."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The buyer mentioned they will use a different card for payment."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        }
+      ],
+      "pass_count": 2,
+      "pass_rate": 1,
+      "stable": "pass",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The buyer mentioned they will use a different card for payment."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": true
+    },
+    {
+      "id": "j-cold-dm-files-first",
+      "judgment": true,
+      "code": "5120",
+      "attempt": 1,
+      "note": "Cold DM, never worked together, insisted on getting the files before paying.",
+      "now": null,
+      "expected": [
+        "stop_chasing"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72
+      },
+      "baseline_pass": false,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The card had insufficient funds; a new link allows the buyer to try a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": false
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The payment was declined due to insufficient funds, so the buyer should try a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": false
+        }
+      ],
+      "pass_count": 0,
+      "pass_rate": 0,
+      "stable": "fail",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The payment was declined due to insufficient funds, so the buyer should try a different payment method."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": false
+    },
+    {
+      "id": "j-pushy-bank-blame",
+      "judgment": true,
+      "code": "0500",
+      "attempt": 1,
+      "note": "First contact, pushed hard for the files before paying, now says their bank is the problem.",
+      "now": null,
+      "expected": [
+        "stop_chasing"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72
+      },
+      "baseline_pass": false,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The buyer mentioned a bank issue, so a new link allows them to try a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": false
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The buyer mentioned a bank issue, so a new link allows them to try a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": false
+        }
+      ],
+      "pass_count": 0,
+      "pass_rate": 0,
+      "stable": "fail",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The buyer mentioned a bank issue, so a new link allows them to try a different payment method."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": false
+    },
+    {
+      "id": "j-card-replaced",
+      "judgment": true,
+      "code": "5100",
+      "attempt": 1,
+      "note": "Repeat client says the card was just replaced.",
+      "now": null,
+      "expected": [
+        "new_checkout_link"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72
+      },
+      "baseline_pass": false,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The client mentioned the card was replaced, so they need to provide the new card details."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The client mentioned the card was replaced, so they need to provide new payment details."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        }
+      ],
+      "pass_count": 2,
+      "pass_rate": 1,
+      "stable": "pass",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The client mentioned the card was replaced, so they need to provide new payment details."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": true
+    },
+    {
+      "id": "j-stranger-pay-double",
+      "judgment": true,
+      "code": "9500",
+      "attempt": 1,
+      "note": "Stranger, asked for the files first, offered to pay double after.",
+      "now": null,
+      "expected": [
+        "stop_chasing"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "baseline_pass": false,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "stop_chasing",
+            "wait_hours": null,
+            "reason": "The payment was declined for suspected fraud and the buyer's behavior is highly suspicious."
+          },
+          "final": {
+            "next_step": "stop_chasing",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "stop_chasing",
+            "wait_hours": null,
+            "reason": "The payment was flagged as fraud and the buyer's behavior is suspicious."
+          },
+          "final": {
+            "next_step": "stop_chasing",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        }
+      ],
+      "pass_count": 2,
+      "pass_rate": 1,
+      "stable": "pass",
+      "proposed": {
+        "next_step": "stop_chasing",
+        "wait_hours": null,
+        "reason": "The payment was flagged as fraud and the buyer's behavior is suspicious."
+      },
+      "final": {
+        "next_step": "stop_chasing",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": true
+    },
+    {
+      "id": "j-stranger-files-today",
+      "judgment": true,
+      "code": "9520",
+      "attempt": 1,
+      "note": "Stranger, wants the files today.",
+      "now": null,
+      "expected": [
+        "stop_chasing"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "baseline_pass": false,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The card was reported as lost or stolen, so the buyer needs to provide a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": false
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The card was reported as lost or stolen, so the buyer needs to provide a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": false
+        }
+      ],
+      "pass_count": 0,
+      "pass_rate": 0,
+      "stable": "fail",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The card was reported as lost or stolen, so the buyer needs to provide a different payment method."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": false
+    },
+    {
+      "id": "j-company-card-restricted",
+      "judgment": true,
+      "code": "5180",
+      "attempt": 1,
+      "note": "Long-time client, company card is restricted for online payments.",
+      "now": null,
+      "expected": [
+        "new_checkout_link"
+      ],
+      "wait_window": null,
+      "baseline": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "baseline_pass": true,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The company card is restricted for online payments, so the client needs a new link to use a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null,
+            "reason": "The company card is restricted for online payments, so the client needs a new link to use a different payment method."
+          },
+          "final": {
+            "next_step": "new_checkout_link",
+            "wait_hours": null
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        }
+      ],
+      "pass_count": 2,
+      "pass_rate": 1,
+      "stable": "pass",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The company card is restricted for online payments, so the client needs a new link to use a different payment method."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": true
+    },
+    {
+      "id": "j-payday-friday-pinned",
+      "judgment": true,
+      "code": "5120",
+      "attempt": 1,
+      "note": "Repeat client, payday is Friday.",
+      "now": "2026-10-06T03:00:00Z",
+      "expected": [
+        "retry_same_card_later"
+      ],
+      "wait_window": [
+        60,
+        84
+      ],
+      "baseline": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72
+      },
+      "baseline_pass": true,
+      "runs": [
+        {
+          "rep": 1,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "retry_same_card_later",
+            "wait_hours": 62,
+            "reason": "The client mentioned payday is Friday, so we will retry the card then."
+          },
+          "final": {
+            "next_step": "retry_same_card_later",
+            "wait_hours": 62
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        },
+        {
+          "rep": 2,
+          "model": "gemma-4-31b-it",
+          "proposed": {
+            "next_step": "retry_same_card_later",
+            "wait_hours": 62,
+            "reason": "The client mentioned payday is Friday, so we will retry the card then."
+          },
+          "final": {
+            "next_step": "retry_same_card_later",
+            "wait_hours": 62
+          },
+          "vetoed": false,
+          "veto_reason": null,
+          "decided_by": "gemma",
+          "fallback_reason": null,
+          "ai_error": null,
+          "pass": true
+        }
+      ],
+      "pass_count": 2,
+      "pass_rate": 1,
+      "stable": "pass",
+      "proposed": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 62,
+        "reason": "The client mentioned payday is Friday, so we will retry the card then."
+      },
+      "final": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 62
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "ai_error": null,
+      "gemma_pass": true
+    }
+  ]
+}

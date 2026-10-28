@@ -1,0 +1,79 @@
+{
+  "ran_at": "2026-10-06T10:29:23.985Z",
+  "steps": [
+    {
+      "path": "A attempt 1",
+      "trigger": "CCREJECT-IF",
+      "job_id": "job_f73a5da2",
+      "attempt": 1,
+      "order_id": "5AP15224TN9010405",
+      "order_status": "COMPLETED",
+      "capture_status": "DECLINED",
+      "code": "5120",
+      "model": "gemma-4-31b-it",
+      "files_locked": true,
+      "buyer_message": "The charge didn't clear. PayPal response code 5120.",
+      "proposed": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72,
+        "reason": "The client mentioned payday is Friday, so we will retry the card then."
+      },
+      "final": {
+        "next_step": "retry_same_card_later",
+        "wait_hours": 72
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "paid_on_attempt": null
+    },
+    {
+      "path": "B attempt 1",
+      "trigger": "CCREJECT-SF",
+      "job_id": "job_defe9e32",
+      "attempt": 1,
+      "order_id": "8E888807AR306884H",
+      "order_status": "COMPLETED",
+      "capture_status": "DECLINED",
+      "code": "9500",
+      "model": "gemma-4-31b-it",
+      "files_locked": true,
+      "buyer_message": "Do not retry this card. PayPal response code 9500.",
+      "proposed": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null,
+        "reason": "The payment was declined due to suspected fraud, so please provide a new checkout link for the buyer."
+      },
+      "final": {
+        "next_step": "new_checkout_link",
+        "wait_hours": null
+      },
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "gemma",
+      "fallback_reason": null,
+      "paid_on_attempt": null
+    },
+    {
+      "path": "A attempt 2 (approved retry)",
+      "trigger": "Sandbox Buyer",
+      "job_id": "job_f73a5da2",
+      "attempt": 2,
+      "order_id": "3X3581419F543231V",
+      "order_status": "COMPLETED",
+      "capture_status": "COMPLETED",
+      "code": "0000",
+      "model": null,
+      "files_locked": false,
+      "buyer_message": null,
+      "proposed": null,
+      "final": null,
+      "vetoed": false,
+      "veto_reason": null,
+      "decided_by": "guard",
+      "fallback_reason": null,
+      "paid_on_attempt": 2
+    }
+  ]
+}

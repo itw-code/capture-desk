@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capture Desk</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #001435;
+      --text: #2f3033;
+      --muted: #6b6e76;
+      --line: #e1e5ea;
+      --bg: #f5f7fa;
+      --paper: #ffffff;
+      --blue: #0074de;
+      --blue-deep: #002991;
+      --blue-wash: #e3f7ff;
+      --hold: #c31526;
+      --clear: #0b6b3a;
+      --focus: #0074de;
+      --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --medium: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --bold: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+    main { width: min(640px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 64px; }
+    .problem {
+      margin: 0 0 16px;
+      padding: 14px 16px;
+      background: var(--blue-wash);
+      border-radius: 4px;
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    h1 {
+      margin: 0 0 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--medium);
+      font-size: 20px;
+      font-weight: normal;
+      line-height: 1.35;
+      color: var(--ink);
+    }
+    .job-name {
+      margin: 0;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .amount {
+      margin: 4px 0 0;
+      font-family: var(--bold);
+      font-size: 32px;
+      font-weight: normal;
+      line-height: 1.15;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .job { margin-top: 16px; }
+    .job p { margin: 0; }
+    .job .lead {
+      font-family: var(--bold);
+      font-size: 28px;
+      font-weight: normal;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+    .job .note { margin-top: 4px; color: var(--muted); }
+    .panel[data-state="declined"] .lead,
+    .panel[data-state="declined"] .note,
+    .panel[data-state="declined"] .capture { color: var(--hold); }
+    .panel[data-state="clear"] .lead,
+    .panel[data-state="clear"] .capture { color: var(--clear); }
+    .job .capture { font-family: var(--medium); font-weight: normal; }
+    .job .status {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 15px;
+      color: var(--text);
+    }
+    .waitbar {
+      position: relative;
+      height: 4px;
+      margin-top: 16px;
+      border-radius: 99px;
+      background: var(--blue-wash);
+      overflow: hidden;
+    }
+    .waitbar::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 40%;
+      background: var(--blue);
+      animation: sweep 1.1s ease-in-out infinite;
+    }
+    .tell {
+      margin-top: 20px;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 13px;
+      font-weight: normal;
+    }
+    .buyer {
+      margin-top: 8px;
+      padding: 12px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+      color: var(--text);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .waitbar::before { animation: none; width: 100%; }
+    }
+    @keyframes sweep {
+      from { transform: translateX(-120%); }
+      to { transform: translateX(280%); }
+    }
+    [hidden] { display: none !important; }
+    .checkout {
+      display: grid;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .field { display: grid; gap: 6px; }
+    label {
+      color: var(--text);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    button, select, textarea {
+      font-family: var(--sans);
+      font-size: 16px;
+    }
+    button, select { min-height: 48px; width: 100%; }
+    textarea {
+      width: 100%;
+      resize: vertical;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 10px 12px;
+      line-height: 1.4;
+    }
+    .hint { margin: 0; color: var(--muted); font-size: 12px; }
+    .reread { margin-top: 12px; }
+    .reread button { padding: 8px 16px; font-size: 14px; background: #fff; color: var(--blue-deep); border: 1px solid var(--blue-deep); }
+    .reread button:hover { background: var(--blue-wash); }
+    .reread p { margin: 8px 0 0; font-size: 14px; color: var(--text); }
+    .reread .meta { color: var(--muted); font-size: 13px; }
+    .next {
+      margin-top: 8px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+    }
+    .next p { margin: 0; }
+    .next .move { font-family: var(--medium); color: var(--ink); }
+    .next .why { margin-top: 4px; color: var(--muted); font-size: 14px; }
+    .next .tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 99px;
+      background: var(--blue-wash);
+      color: var(--blue-deep);
+      font-family: var(--medium);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .next .veto { margin-top: 8px; color: var(--hold); font-family: var(--medium); font-size: 14px; }
+    .next .count { margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .next .approve { margin-top: 12px; }
+    .next .approve + .approve { background: #fff; color: var(--blue-deep); border: 1px solid var(--blue-deep); }
+    select {
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: var(--blue-deep);
+      color: #fff;
+      font-family: var(--medium);
+      cursor: pointer;
+    }
+    button:hover { background: #001f6b; }
+    button:disabled, select:disabled { opacity: .55; cursor: not-allowed; }
+    button:focus-visible, select:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .error {
+      margin: 16px 0 0;
+      padding: 12px 14px;
+      color: var(--hold);
+      background: #fff5f5;
+      border-radius: 8px;
+    }
+    .meta { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+    .record { margin-top: 16px; color: var(--blue-deep); }
+    summary { cursor: pointer; font-family: var(--medium); font-size: 14px; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 8px 0 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text);
+    }
+    @media (max-width: 420px) {
+      main { width: min(640px, calc(100% - 24px)); padding-top: 16px; }
+      .panel { padding: 16px; }
+      .job .lead, .amount { font-size: 24px; }
+      h1 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p id="problem" class="problem">Checkout can say completed while the charge is declined. This holds your files until the money clears.</p>
+    <article id="panel" class="panel" data-state="before">
+      <h1>Capture Desk · works with PayPal checkout</h1>
+      <p id="job-name" class="job-name">Freelance delivery: final files</p>
+      <p id="amount" class="amount" hidden></p>
+      <div id="job" class="job" aria-live="polite"></div>
+      <div id="waitbar" class="waitbar" hidden></div>
+      <p id="error" class="error" hidden></p>
+      <div id="checkout" class="checkout">
+        <div class="field">
+          <label for="note">About this buyer (only you see this)</label>
+          <textarea id="note" maxlength="280" rows="2">Repeat client, paid me 6 times. Said payday is Friday.</textarea>
+        </div>
+        <div class="field">
+          <label for="trigger">Test card</label>
+          <select id="trigger"></select>
+        </div>
+        <button id="again" type="button">New checkout</button>
+      </div>
+    </article>
+    <details class="record">
+      <summary>PayPal record</summary>
+      <p id="health" class="meta"></p>
+      <p class="meta">Sandbox note: Approve runs the next checkout right away. The sandbox skips the retry wait; the time the desk would wait until is decision.not_before.</p>
+      <pre id="record">No charge yet.</pre>
+    </details>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const JOB_NAME = "Freelance delivery: final files";
+    const LABELS = {
+      "CCREJECT-IF": "Insufficient funds (5120)",
+      "CCREJECT-REFUSED": "Do not honor (0500)",
+      "CCREJECT-EC": "Expired card (5400)",
+      "CCREJECT-SF": "Suspected fraud (9500)",
+      "CCREJECT-LS": "Lost or stolen (9520)",
+      "CCREJECT-IRC": "Invalid or restricted (5180)",
+      "CCREJECT-BANK_ERROR": "Generic decline (5100)",
+      "CCREJECT-IA": "Invalid account (1330)",
+      "Sandbox Buyer": "Sandbox Buyer · clears",
+    };
+    let order = null;
+    let job = null;
+    // The job id lives in the address bar so a refresh, a second window, or a handoff
+    // to another agent all reopen the same job instead of a blank desk.
+    let jobId = null;
+
+    function setJobId(id) {
+      jobId = id || null;
+      const url = new URL(window.location.href);
+      if (jobId) url.searchParams.set("job", jobId);
+      else url.searchParams.delete("job");
+      window.history.replaceState({}, "", url);
+    }
+
+    function setState(name) {
+      $("panel").dataset.state = name;
+    }
+
+    function line(text, className) {
+      const p = document.createElement("p");
+      if (className) p.className = className;
+      p.textContent = text;
+      return p;
+    }
+
+    function showBefore() {
+      setState("before");
+      $("waitbar").hidden = true;
+      $("job-name").textContent = JOB_NAME;
+      $("amount").hidden = true;
+      $("amount").textContent = "";
+      $("job").replaceChildren(
+        line("Work not started.", "lead"),
+        line("There is no file to send.", "note"),
+      );
+      $("checkout").hidden = false;
+    }
+
+    function showWaiting() {
+      setState("waiting");
+      $("waitbar").hidden = false;
+      $("problem").hidden = true;
+      $("amount").hidden = true;
+      $("job").replaceChildren(line("Checking with PayPal…", "lead"));
+      $("checkout").hidden = false;
+    }
+
+    function showMoney(paid) {
+      const unit = (paid.purchase_units || [])[0] || {};
+      const capture = ((unit.payments || {}).captures || [])[0];
+      const amount = (capture && capture.amount) || unit.amount;
+      if (unit.description) $("job-name").textContent = unit.description;
+      if (amount && amount.value != null) {
+        $("amount").textContent = (amount.currency_code ? amount.currency_code + " " : "") + amount.value;
+        $("amount").hidden = false;
+      }
+    }
+
+    function showStatuses(decision) {
+      return [
+        line("Order " + decision.order_status + " at checkout", "status"),
+        line("Capture " + decision.capture_status, "status capture"),
+      ];
+    }
+
+    function moveLabel(step, hours, notBefore) {
+      if (step === "retry_same_card_later") {
+        const at = notBefore ? new Date(notBefore) : new Date(Date.now() + hours * 3600000);
+        const when = at.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+        const clock = at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+        return "Retry this card on " + when + " at " + clock + " (in " + hours + " h)";
+      }
+      if (step === "new_checkout_link") return "Send a new checkout link";
+      if (step === "stop_chasing") return "Stop chasing this job";
+      return "Your call. No move was picked for you.";
+    }
+
+    function button(text, className, onclick) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = className;
+      b.textContent = text;
+      b.onclick = onclick;
+      return b;
+    }
+
+    function nextBlock(decision) {
+      const box = document.createElement("div");
+      box.className = "next";
+      box.id = "next";
+      const final = decision.final;
+      const heading = line("Next step", "tell");
+      heading.style.marginTop = "0";
+      box.append(heading, line(moveLabel(final.next_step, final.wait_hours, decision.not_before), "move"));
+      const p = decision.proposed;
+      if (p && !decision.vetoed) {
+        const why = line(p.reason, "why");
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = "proposed by Gemma";
+        why.append(tag);
+        box.append(why);
+      }
+      if (p && decision.vetoed) {
+        box.append(line("Gemma proposed: " + moveLabel(p.next_step, p.wait_hours, null) + ". " + p.reason, "why"));
+        box.append(line("Vetoed. " + decision.veto_reason, "veto"));
+      }
+      if (decision.decided_by === "fallback") {
+        box.append(line("Gemma's answer could not be used. " + (decision.fallback_reason || ""), "why"));
+      }
+      box.append(line("Attempt " + decision.attempt + " of " + decision.max_attempts, "count"));
+      const skip = final.next_step === "new_checkout_link" ? "Approve: new checkout now" : "Approve: retry now";
+      if (final.next_step === "ask_freelancer") {
+        for (const step of decision.allowed) {
+          box.append(button(step === "stop_chasing" ? "Choose · stop chasing this job" : skip, "approve", () => approve(step)));
+        }
+      } else if (final.next_step === "stop_chasing") {
+        box.append(button("Approve · stop chasing this job", "approve", () => approve("stop_chasing")));
+      } else {
+        box.append(button(skip, "approve", () => approve(final.next_step)));
+      }
+      return box;
+    }
+
+    // Ask PayPal for this order again, now. Shows what PayPal says, whatever it says.
+    // Stored rereads render immediately: a judge should see the disagreement without
+    // having to click, and a restored page must not look like nothing was ever read.
+    function rereadBlock(orderId, checkoutOrderStatus, storedReads) {
+      const box = document.createElement("div");
+      box.className = "reread";
+      const out = document.createElement("div");
+      const rereads = (storedReads || []).filter((r) => r.source === "reread");
+      const show = (claims) => {
+        const nodes = [line("Checkout said: Order " + checkoutOrderStatus, "")];
+        for (const r of claims) {
+          nodes.push(
+            line("Rechecked just now: Order " + r.order_status + " · Capture " + r.capture_status + (r.code ? " " + r.code : ""), "")
+          );
+        }
+        if (claims.length) nodes.push(line("Order " + orderId, "meta"));
+        return nodes;
+      };
+      if (rereads.length) out.replaceChildren(...show(rereads));
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "reread-btn";
+      btn.textContent = "Ask PayPal again";
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        out.replaceChildren(line("Asking PayPal…", "meta"));
+        try {
+          const r = await api("/api/order?id=" + encodeURIComponent(orderId));
+          out.replaceChildren(
+            line("Checkout said: Order " + checkoutOrderStatus, ""),
+            line("Rechecked just now: Order " + r.order_status + " · Capture " + r.capture_status + (r.response_code ? " " + r.response_code : ""), ""),
+            line("Order " + r.order_id, "meta")
+          );
+        } catch (err) {
+          out.replaceChildren(line(err.message || String(err), "meta"));
+        }
+        btn.disabled = false;
+      });
+      box.append(btn, out);
+      return box;
+    }
+
+    function closedBlock() {
+      const box = document.createElement("div");
+      box.className = "next";
+      box.id = "next";
+      box.append(
+        line("Next step", "tell"),
+        line("Stopped chasing this job.", "move"),
+        line("Files stay locked. The slot is released.", "why")
+      );
+      box.firstChild.style.marginTop = "0";
+      return box;
+    }
+
+    // A charge the desk has not decided yet. The lock and the buyer line are already
+    // facts; only the next step is missing, and it is being fetched.
+    function pendingBlock() {
+      const box = document.createElement("div");
+      box.className = "next";
+      box.id = "next";
+      box.append(line("Next step", "tell"), line("Deciding the next step…", "meta"));
+      box.firstChild.style.marginTop = "0";
+      return box;
+    }
+
+    function showDeclined(decision, reads) {
+      setState("declined");
+      $("waitbar").hidden = true;
+      const nodes = [
+        line("Work not started.", "lead"),
+        line("Files locked.", "note"),
+        ...showStatuses(decision),
+      ];
+      if (decision.buyer_message) {
+        nodes.push(line("Tell the buyer:", "tell"));
+        nodes.push(line(decision.buyer_message, "buyer"));
+      }
+      if (order && order.id) nodes.push(rereadBlock(order.id, order.status, reads));
+      if (job && job.closed) nodes.push(closedBlock());
+      else if (decision.final) nodes.push(nextBlock(decision));
+      else nodes.push(pendingBlock());
+      $("job").replaceChildren(...nodes);
+      $("checkout").hidden = false;
+    }
+
+    function showClear(decision) {
+      setState("clear");
+      $("waitbar").hidden = true;
+      const nodes = [
+        line("Work can start.", "lead"),
+        line("Files unlocked.", "note"),
+        ...showStatuses(decision),
+      ];
+      if (decision.paid_on_attempt > 1) nodes.push(line("Paid on attempt " + decision.paid_on_attempt, "status capture"));
+      $("job").replaceChildren(...nodes);
+      $("checkout").hidden = true;
+    }
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let body = {};
+      try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+      if (!res.ok) {
+        const issue = body.details && body.details[0];
+        const detail = issue
+          ? issue.issue + (issue.description ? ": " + issue.description : "")
+          : (body.message || body.error_description || body.name || body.error || res.statusText);
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
+      return body;
+    }
+
+    async function load() {
+      showBefore();
+      const [health, triggers] = await Promise.all([api("/api/health"), api("/api/triggers")]);
+      const paypalBit = health.paypal_ok ? "PayPal sandbox live" : health.paypal ? "PayPal key rejected" : "PayPal key missing";
+      $("health").textContent = paypalBit + " · AI " + health.ai;
+      $("trigger").replaceChildren();
+      for (const name of Object.keys(triggers)) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = LABELS[name] || name;
+        $("trigger").appendChild(opt);
+      }
+      const wanted = new URL(window.location.href).searchParams.get("job");
+      if (wanted) await restore(wanted);
+    }
+
+    // Rebuild the panel from the ledger. Everything shown here came from the same
+    // guarded decision the CLI and any agent get; nothing is re-derived in the browser.
+    //
+    // A job charged by the CLI (or by another agent) may have no decision yet. The
+    // ledger still knows the lock and the buyer line, so the panel opens locked and
+    // then asks the desk for the next step instead of falling back to "Work not started".
+    async function restore(id) {
+      try {
+        const detail = await api("/api/job?id=" + encodeURIComponent(id));
+        job = { id: detail.id, note: detail.note, attempt: detail.attempt, max_attempts: detail.max_attempts, closed: detail.closed, paid_on: detail.paid_on };
+        setJobId(detail.id);
+        let shown = detail.latest;
+        const attempt = shown ? detail.attempts.find((a) => a.order_id === shown.order_id) : null;
+        order = attempt && attempt.order ? { ...attempt.order } : null;
+        if (!shown) {
+          showBefore();
+          return;
+        }
+        // The ledger already knows the lock and the buyer line, so draw those first.
+        // Deciding takes a model call; the page must not claim "no file to send" while
+        // a real charge is sitting declined in the ledger.
+        if (order) showMoney(order);
+        if (shown.files_locked === false) showClear(shown);
+        else showDeclined(shown, attempt && attempt.reads);
+        $("record").textContent = JSON.stringify({ job: detail, shown }, null, 2);
+
+        if (shown.decided === false && shown.files_locked !== false) {
+          // Charged but never decided: let the desk decide, exactly as a click would.
+          try {
+            const decided = await post("/api/decide", { job_id: detail.id });
+            shown = { ...decided.decision, max_attempts: detail.max_attempts };
+            $("record").textContent = JSON.stringify({ job: detail, decision: decided.decision }, null, 2);
+            if (shown.files_locked === false) showClear(shown);
+            else showDeclined(shown, attempt && attempt.reads);
+          } catch (err) {
+            $("error").hidden = false;
+            $("error").textContent = "The next step could not be decided: " + (err.message || String(err));
+            const box = $("next");
+            if (box) box.append(line("Your call. No move was picked for you.", "why"));
+          }
+        }
+      } catch (err) {
+        setJobId(null);
+        showBefore();
+        $("error").hidden = false;
+        $("error").textContent = err.message || String(err);
+      }
+    }
+
+    function post(path, body) {
+      return api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    }
+
+    function lockControls(on) {
+      $("again").disabled = on;
+      $("trigger").disabled = on;
+      $("note").disabled = on;
+      for (const b of document.querySelectorAll("#next button")) b.disabled = on;
+    }
+
+    // One checkout. A fresh job takes the note; an approved next step reuses the job.
+    // The attempt number is sent with the charge so a repeated click becomes a replay
+    // of that attempt instead of a second PayPal order.
+    async function runCharge(sameJob) {
+      order = null;
+      lockControls(true);
+      $("error").hidden = true;
+      $("error").textContent = "";
+      if (!sameJob) {
+        job = null;
+        setJobId(null);
+        $("record").textContent = "No charge yet.";
+      }
+      showWaiting();
+      try {
+        const attemptNo = sameJob && job ? job.attempt + 1 : undefined;
+        const charged = await post("/api/charge", {
+          trigger: $("trigger").value,
+          ...(sameJob && job ? { job_id: job.id, attempt_no: attemptNo } : { note: $("note").value }),
+        });
+        job = charged.job;
+        setJobId(job.id);
+        order = { ...charged };
+        delete order.job;
+        const capture = ((order.purchase_units || [])[0]?.payments?.captures || [])[0];
+        if (!capture) throw new Error("PayPal returned no capture.");
+        const result = await post("/api/decide", { order, job_id: job.id });
+        showMoney(order);
+        $("record").textContent = JSON.stringify({ order, job: result.job, decision: result.decision, provider: result.provider, model: result.model }, null, 2);
+        // Unlock only when the desk says so: a COMPLETED capture. Anything else holds the files.
+        if (result.decision.files_locked === false) showClear(result.decision);
+        else showDeclined(result.decision);
+      } catch (err) {
+        order = null;
+        if (!sameJob) { job = null; setJobId(null); }
+        showBefore();
+        $("problem").hidden = true;
+        $("error").hidden = false;
+        $("error").textContent = err.message || String(err);
+        $("record").textContent = err.message || String(err);
+      } finally {
+        lockControls(false);
+      }
+    }
+
+    async function approve(step) {
+      if (!job) return;
+      if (step !== "stop_chasing") return runCharge(true);
+      lockControls(true);
+      try {
+        await post("/api/close", { job_id: job.id });
+        const box = document.createElement("div");
+        box.className = "next";
+        box.append(line("Next step", "tell"), line("Stopped chasing this job.", "move"), line("Files stay locked. The slot is released.", "why"));
+        box.firstChild.style.marginTop = "0";
+        $("next").replaceWith(box);
+      } catch (err) {
+        $("error").hidden = false;
+        $("error").textContent = err.message || String(err);
+      } finally {
+        lockControls(false);
+        for (const b of document.querySelectorAll("#next button")) b.disabled = false;
+      }
+    }
+
+    $("again").onclick = () => runCharge(false);
+
+    load().catch((err) => { $("health").textContent = err.message; });
+  </script>
+</body>
+</html>

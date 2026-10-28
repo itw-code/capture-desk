@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Capture Desk · the flow</title>
+  <link rel="stylesheet" href="https://www.paypalobjects.com/paypal-ui/web/fonts-and-normalize/3-1-0/fonts-and-normalize.min.css" />
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #001435;
+      --text: #2f3033;
+      --muted: #54575e;
+      --line: #e1e5ea;
+      --bg: #f5f7fa;
+      --paper: #ffffff;
+      --blue: #0074de;
+      --blue-deep: #002991;
+      --blue-wash: #e3f7ff;
+      --hold: #c31526;
+      --clear: #0b6b3a;
+      --focus: #0074de;
+      --sans: PayPalOpen-Regular, "Helvetica Neue", Arial, sans-serif;
+      --medium: PayPalOpen-Medium, "Helvetica Neue", Arial, sans-serif;
+      --bold: PayPalOpen-Bold, "Helvetica Neue", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 180px; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.5;
+      color: var(--text);
+      background: var(--bg);
+      padding-top: 168px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .skip {
+      position: absolute;
+      left: 16px;
+      top: -48px;
+      z-index: 5;
+      padding: 10px 14px;
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 8px;
+    }
+    .skip:focus { top: 12px; }
+    .progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: var(--blue);
+      transform: scaleX(0);
+      transform-origin: left center;
+    }
+    .top {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      background: var(--bg);
+      border-bottom: 1px solid var(--line);
+    }
+    .bar, .chapters, main {
+      width: min(880px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+    .bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 64px;
+    }
+    .mark {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--medium);
+      font-size: 16px;
+      font-weight: normal;
+    }
+    .mark a { color: inherit; text-decoration: none; }
+    .chapters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      padding-bottom: 10px;
+    }
+    .chapters a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: var(--ink);
+      text-decoration: none;
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .chapters a:hover { background: var(--paper); }
+    .chapters a[aria-current="true"] {
+      background: var(--blue-wash);
+      color: var(--blue-deep);
+    }
+    .open {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: var(--blue-deep);
+      color: #fff;
+      text-decoration: none;
+      font-family: var(--medium);
+      font-size: 15px;
+      font-weight: normal;
+      cursor: pointer;
+    }
+    .open:hover { background: #001f6b; }
+    a, .open { transition: background-color 200ms ease, color 200ms ease; }
+    a:focus-visible, .open:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    main { padding: 40px 0 80px; }
+    .hook { padding-bottom: 8px; }
+    h1 {
+      margin: 0;
+      max-width: 16em;
+      color: var(--ink);
+      font-family: var(--bold);
+      font-size: 44px;
+      font-weight: normal;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .lede {
+      margin: 20px 0 0;
+      max-width: 38em;
+      font-size: 18px;
+      color: var(--text);
+    }
+    section { padding-top: 56px; }
+    h2 {
+      margin: 0 0 16px;
+      color: var(--ink);
+      font-family: var(--medium);
+      font-size: 28px;
+      font-weight: normal;
+      line-height: 1.25;
+    }
+    p { margin: 0 0 12px; }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .fact {
+      margin: 0;
+      padding: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .fact svg { color: var(--blue-deep); display: block; margin-bottom: 12px; }
+    .fact p { margin: 0; }
+    .split {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+    .tile {
+      margin: 0;
+      padding: 20px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .kicker {
+      margin: 0;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .state {
+      margin: 8px 0 0;
+      color: var(--ink);
+      font-family: var(--bold);
+      font-size: 32px;
+      font-weight: normal;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    .tile.declined .state,
+    .tile.declined .where { color: var(--hold); }
+    .where { margin: 4px 0 0; }
+    .while {
+      align-self: center;
+      margin: 0;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .flow {
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+    .flow li {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 12px;
+      padding: 16px 0;
+      border-top: 1px solid var(--line);
+    }
+    .flow li::before {
+      counter-increment: step;
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: var(--blue-wash);
+      color: var(--blue-deep);
+      font-family: var(--bold);
+      font-weight: normal;
+    }
+    .flow h3 {
+      margin: 8px 0 4px;
+      color: var(--ink);
+      font-family: var(--medium);
+      font-size: 18px;
+      font-weight: normal;
+    }
+    .flow p { margin: 0; }
+    .lines {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .lines th, .lines td {
+      padding: 14px 16px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+    .lines tr:last-child th,
+    .lines tr:last-child td { border-bottom: 0; }
+    .lines th {
+      width: 42%;
+      color: var(--ink);
+      font-family: var(--medium);
+      font-size: 16px;
+      font-weight: normal;
+    }
+    .shots {
+      display: grid;
+      gap: 28px;
+      margin-top: 28px;
+    }
+    figure { margin: 0; }
+    figcaption {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .panel {
+      max-width: 640px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    .card-title {
+      margin: 0 0 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      font-family: var(--medium);
+      font-size: 20px;
+      font-weight: normal;
+      line-height: 1.35;
+    }
+    .job-name {
+      margin: 0;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .amount {
+      margin: 4px 0 0;
+      color: var(--ink);
+      font-family: var(--bold);
+      font-size: 32px;
+      font-weight: normal;
+      line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+    }
+    .job { margin-top: 16px; }
+    .job p { margin: 0; }
+    .lead {
+      font-family: var(--bold);
+      font-size: 28px;
+      font-weight: normal;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+    .note { margin-top: 4px; color: var(--muted); }
+    .panel[data-state="declined"] .lead,
+    .panel[data-state="declined"] .note,
+    .panel[data-state="declined"] .capture { color: var(--hold); }
+    .panel[data-state="clear"] .lead,
+    .panel[data-state="clear"] .capture { color: var(--clear); }
+    .status {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+      font-size: 15px;
+    }
+    .capture { font-family: var(--medium); font-weight: normal; }
+    .tell {
+      margin-top: 20px;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .buyer {
+      margin-top: 8px;
+      padding: 12px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+    .end {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 16px;
+    }
+    .follow { margin-top: 16px; }
+    .lines caption {
+      caption-side: bottom;
+      padding: 12px 16px 0;
+      text-align: left;
+      color: var(--muted);
+      font-family: var(--medium);
+      font-size: 14px;
+      font-weight: normal;
+    }
+    .end p { margin: 0; color: var(--muted); }
+    @media (prefers-reduced-motion: reduce) {
+      a, .open { transition: none; }
+    }
+    @media (max-width: 800px) {
+      h1 { font-size: 32px; }
+      h2 { font-size: 24px; }
+      .facts, .split { grid-template-columns: 1fr; }
+      .while { justify-self: start; }
+      .lines th, .lines td { display: block; width: auto; }
+      .lines th { padding-bottom: 0; }
+      .state, .amount, .lead { font-size: 26px; }
+      .panel { padding: 16px; }
+      .card-title { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#story">Skip to the story</a>
+  <header class="top">
+    <div class="progress" id="progress" aria-hidden="true"></div>
+    <div class="bar">
+      <p class="mark"><a href="/story">Capture Desk</a></p>
+      <a class="open" href="/">Open the desk</a>
+    </div>
+    <nav class="chapters" aria-label="Story">
+      <a href="#use-case">Use case</a>
+      <a href="#split">The split</a>
+      <a href="#flow">The flow</a>
+      <a href="#screen">On screen</a>
+    </nav>
+  </header>
+  <main id="story">
+    <header class="hook">
+      <h1>Checkout can say completed while the charge is declined.</h1>
+      <p class="lede">This holds your files until the money clears. Capture Desk sits beside PayPal checkout, so a freelancer can take the card payment and still hold the files until the capture clears.</p>
+    </header>
+
+    <section id="use-case" aria-labelledby="use-case-title">
+      <h2 id="use-case-title">Use case</h2>
+      <p>A freelancer takes a card payment for work that is not delivered yet. On the desk the job is Freelance delivery: final files, and a sandbox charge is USD 25.00.</p>
+      <p>The buyer pays first. The files stay put until the capture clears. Reading only “order completed” is how unpaid work starts.</p>
+      <div class="facts">
+        <article class="fact">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.75" />
+          </svg>
+          <p>Work has not started.</p>
+        </article>
+        <article class="fact">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <rect x="5" y="11" width="14" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.75" />
+            <path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.75" />
+          </svg>
+          <p>The files stay locked on a decline.</p>
+        </article>
+        <article class="fact">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <path d="M20 12a8 8 0 1 1-2.3-5.6" fill="none" stroke="currentColor" stroke-width="1.75" />
+            <path d="M20 5v5h-5" fill="none" stroke="currentColor" stroke-width="1.75" />
+          </svg>
+          <p>New checkout is the only next charge.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="split" aria-labelledby="split-title">
+      <h2 id="split-title">The split</h2>
+      <p>PayPal can return both of these in the checkout response. They are not the same answer.</p>
+      <div class="split">
+        <article class="tile">
+          <p class="kicker">Order</p>
+          <p class="state">COMPLETED</p>
+          <p class="where">at checkout</p>
+        </article>
+        <p class="while">while</p>
+        <article class="tile declined">
+          <p class="kicker">Capture</p>
+          <p class="state">DECLINED</p>
+          <p class="where">the charge did not clear</p>
+        </article>
+      </div>
+      <p class="follow">The desk shows those two lines from the checkout response. A later read of the same order can say CREATED. That later word stays off the screen.</p>
+    </section>
+
+    <section id="flow" aria-labelledby="flow-title">
+      <h2 id="flow-title">The flow</h2>
+      <ol class="flow">
+        <li>
+          <div>
+            <h3>New checkout</h3>
+            <p>Pick a test card and press New checkout. The desk shows Checking with PayPal&hellip;</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Read both lines</h3>
+            <p>Order COMPLETED at checkout. Capture DECLINED. The job stays on Work not started. Files locked.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Tell the buyer</h3>
+            <p>The desk writes one line. Insufficient funds uses the 5120 sentence. Suspected fraud, lost or stolen, and an invalid or restricted card use the do-not-retry sentence with 9500, 9520, or 5180.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>A later checkout can clear</h3>
+            <p>Press New checkout again. Sandbox Buyer &middot; clears when the capture is completed. The screen says Work can start and Files unlocked, then the two status lines.</p>
+          </div>
+        </li>
+      </ol>
+      <p class="follow">0500, 5400, 5120, 1330, and 5100 use “The charge didn't clear. PayPal response code” and that code. 9500, 9520, and 5180 use “Do not retry this card. PayPal response code” and that code.</p>
+      <p>Gemma gemma-4-31b-it proposes fulfill and retry. The desk writes the buyer line for all eight codes. A hard guard overwrites the model. A declined capture stays unfulfilled, so the files stay locked.</p>
+    </section>
+
+    <section id="screen" aria-labelledby="screen-title">
+      <h2 id="screen-title">On screen</h2>
+      <p>These are the words the desk shows. They are examples of the screen, not a live charge.</p>
+      <table class="lines">
+        <caption>Buyer lines the desk writes</caption>
+        <tbody>
+          <tr>
+            <th scope="row">The charge didn't clear. PayPal response code 5120.</th>
+            <td>Same sentence for 0500, 5400, 1330, and 5100, with that code.</td>
+          </tr>
+          <tr>
+            <th scope="row">Do not retry this card. PayPal response code 9500.</th>
+            <td>Same sentence for 9520 and 5180, with that code.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="shots">
+        <figure class="shot">
+          <figcaption>Insufficient funds (5120)</figcaption>
+          <article class="panel" data-state="declined">
+            <p class="card-title">Capture Desk &middot; works with PayPal checkout</p>
+            <p class="job-name">Freelance delivery: final files</p>
+            <p class="amount">USD 25.00</p>
+            <div class="job">
+              <p class="lead">Work not started.</p>
+              <p class="note">Files locked.</p>
+              <p class="status">Order COMPLETED at checkout</p>
+              <p class="status capture">Capture DECLINED</p>
+              <p class="tell">Tell the buyer:</p>
+              <p class="buyer">The charge didn't clear. PayPal response code 5120.</p>
+            </div>
+          </article>
+        </figure>
+        <figure class="shot">
+          <figcaption>Suspected fraud (9500)</figcaption>
+          <article class="panel" data-state="declined">
+            <p class="card-title">Capture Desk &middot; works with PayPal checkout</p>
+            <p class="job-name">Freelance delivery: final files</p>
+            <p class="amount">USD 25.00</p>
+            <div class="job">
+              <p class="lead">Work not started.</p>
+              <p class="note">Files locked.</p>
+              <p class="status">Order COMPLETED at checkout</p>
+              <p class="status capture">Capture DECLINED</p>
+              <p class="tell">Tell the buyer:</p>
+              <p class="buyer">Do not retry this card. PayPal response code 9500.</p>
+            </div>
+          </article>
+        </figure>
+        <figure class="shot">
+          <figcaption>Sandbox Buyer &middot; clears</figcaption>
+          <article class="panel" data-state="clear">
+            <p class="card-title">Capture Desk &middot; works with PayPal checkout</p>
+            <p class="job-name">Freelance delivery: final files</p>
+            <p class="amount">USD 25.00</p>
+            <div class="job">
+              <p class="lead">Work can start.</p>
+              <p class="note">Files unlocked.</p>
+              <p class="status">Order COMPLETED at checkout</p>
+              <p class="status capture">Capture COMPLETED</p>
+            </div>
+          </article>
+        </figure>
+      </div>
+      <div class="end">
+        <a class="open" id="open-desk" href="/">Open the desk</a>
+        <p>A clear charge stops after the two status lines.</p>
+      </div>
+    </section>
+  </main>
+  <script>
+    const chapters = Array.from(document.querySelectorAll(".chapters a"));
+    const sections = chapters.map((link) => document.querySelector(link.getAttribute("href"))).filter(Boolean);
+    const progress = document.getElementById("progress");
+    const header = document.querySelector(".top");
+
+    function fit() {
+      const height = header.offsetHeight;
+      document.body.style.paddingTop = height + "px";
+      document.documentElement.style.scrollPaddingTop = height + "px";
+    }
+
+    function mark() {
+      const line = window.scrollY + header.offsetHeight + 24;
+      let current = sections[0];
+      for (const section of sections) {
+        if (section.offsetTop <= line) current = section;
+      }
+      for (const link of chapters) {
+        const on = current && link.getAttribute("href") === "#" + current.id;
+        if (on) link.setAttribute("aria-current", "true");
+        else link.removeAttribute("aria-current");
+      }
+      const root = document.documentElement;
+      const max = root.scrollHeight - root.clientHeight;
+      progress.style.transform = "scaleX(" + (max > 0 ? root.scrollTop / max : 0) + ")";
+    }
+
+    fit();
+
+    mark();
+    document.addEventListener("scroll", mark, { passive: true });
+    window.addEventListener("resize", () => { fit(); mark(); });
+  </script>
+</body>
+</html>

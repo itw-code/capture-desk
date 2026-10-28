@@ -1,0 +1,42 @@
+.env
+node_modules
+.hermes/
+
+# local-only working artifacts (generated maps, notes, screenshots)
+*-local.html
+
+# superseded demo renders (v11 is the submission asset)
+reel/v8/**/*.mp4
+reel/v9/**/*.mp4
+reel/v10/**/*.mp4
+
+# the desk's own database: local runtime state, not source
+desk.db
+desk.db-wal
+desk.db-shm
+eval/durability-check.db*
+eval/recon-check.db*
+eval/tool-check.db*
+demo.db*
+*.db-wal
+*.db-shm
+
+# superseded reel versions: v11 is the submission asset, the rest are history
+reel/v8/
+reel/v9/
+reel/v10/
+
+# python bytecode from the reel tooling
+__pycache__/
+*.pyc
+
+# 29 Oct: archived and internal working files stay local
+_archive-*/
+*-local.md
+research/
+SUBMISSION_PACK.md
+CAPTURE-DESK-AGENT-TOOL.md
+# v11 shows the pre-CLI/MCP build; the new cut replaces it
+reel/v11/**/*.mp4
+# reel tooling holds local paths; the video goes to YouTube, not the repo
+reel/
