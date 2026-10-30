@@ -13,7 +13,7 @@
 // survives two callers (page, CLI, MCP, two agents) charging at once, and the only way
 // a retried call reuses the first PayPal order instead of creating a second one.
 //
-// node:sqlite ships inside Node (>=22.5), so this costs no dependency.
+// node:sqlite ships inside Node (>=22.5; no flag needed from 22.13), so this costs no dependency.
 
 const path = require("path");
 

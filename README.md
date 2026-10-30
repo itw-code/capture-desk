@@ -21,7 +21,7 @@ Do not use anyone else's keys. Create your own:
 
 ## Run
 
-Needs **Node 22.5 or newer**: the server uses built-in `fetch`, and job state lives in `node:sqlite`. There is nothing to install; the app has no npm dependencies.
+Needs **Node 22.13 or newer**: the server uses built-in `fetch`, and job state lives in `node:sqlite` without an experimental flag. There is nothing to install; the app has no npm dependencies.
 
 From the repo folder:
 
@@ -40,7 +40,7 @@ npm run check
 npm start
 ```
 
-Open http://127.0.0.1:8790. Run **New checkout**.
+Open http://127.0.0.1:8790. Run **New checkout**. The desk page is one file; http://127.0.0.1:8790/story is a separate read-only explainer page.
 
 The charge uses PayPal's card-testing trigger on a sandbox Visa (`4012888888881881`). Pick a **Test card** such as Insufficient funds (5120), Suspected fraud (9500), or Sandbox Buyer · clears. Live records from 5 Oct 2026 are in PROBLEM.md.
 
@@ -109,23 +109,27 @@ Each time a source states what happened to an order, the desk appends it to `rea
 GET /api/reconcile
 ```
 
-returns a count of reads, orders and sources, plus every order whose sources disagreed, with each claim in the order it was made. A live run on 21 Oct 2026 recorded exactly the case the app exists for:
+returns a count of reads, orders and sources, plus every order whose sources disagreed, with each claim in the order it was made. A live re-read on 7 Oct 2026 (order `9RY84897P4146544J`, recorded in [PROBLEM.md](PROBLEM.md)) produced exactly the case the app exists for:
 
 | source | order_status | capture_status | code |
 | --- | --- | --- | --- |
 | checkout | `COMPLETED` | `DECLINED` | `5120` |
 | reread | `CREATED` | `DECLINED` | `5120` |
 
-Two distinct versions of the same order, five minutes apart. The desk never averages them: the file lock reads the capture, and the reconciliation view reports the disagreement rather than resolving it.
+Two distinct versions of the same order, read a moment apart. `eval/recon-check.mjs` writes the same pair into a throwaway ledger five minutes apart and asserts both claims survive. The desk never averages them: the file lock reads the capture, and the reconciliation view reports the disagreement rather than resolving it.
 
 This is a reconciliation view, not a reporting surface. It answers "do our sources agree" and says nothing about money flow, which the product deliberately does not do.
 
-`npm run eval` prints per-case proposed and final moves next to a code-only baseline (retry the same card later unless the code is 9500, 9520, 5180, 5400, or 1330, then a new link; stop at attempt 3; fixed 72-hour wait), and reports both. Cases are in `eval/cases.json`; 8 of the 29 are "judgment" cases where the note should flip the move away from the baseline, and the set was frozen in `eval/cases-frozen-2026-10-06.json` before the run. Gemma is given the current time and weekday in UTC+7 so a day named in the note becomes a real wait. Latest run (gemma-4-31b-it): all cases Gemma 26/29, baseline 23/29; judgment cases only Gemma 5/8, baseline 2/8, so Gemma beats the baseline there but misses 3: it sent a new link for both "stranger/pushy for the files first" notes on 5120 and 0500 and for the 9520 stranger, where stopping was expected. On the 21 older cases Gemma and the baseline both score 21/21, so those cannot tell them apart; one judgment case (5180) passes for the baseline too, and the pinned Friday case (62h, window 60 to 84) passes for the baseline only because its fixed 72 hours falls inside the window. No vetoes, fallbacks, or AI errors in that run; it is one run at temperature 0, not a large sample.
+`npm run eval` prints per-case proposed and final moves next to a code-only baseline, and reports both. The baseline reads no note: stop chasing at attempt 3 and on 9500, 9520 and 5180; a new checkout link on 5400 and 1330, where the same card can never work; otherwise retry the same card after a fixed 72 hours. Cases are in `eval/cases.json`. 8 of the 29 are "judgment" cases, where the note, not only the code, should decide the move; the rest are code cases where a fixed rule is enough. The 6 Oct set is kept as `eval/cases-frozen-2026-10-06.json`, but the live set is no longer identical to it: on 29 Oct the expected answer for 11 cases on 9500, 9520 and 5180 was changed to "stop chasing or ask the freelancer, never a new checkout link", to match the guard rule. Gemma is given the current time and weekday in UTC+7 so a day named in the note becomes a real wait.
+
+Latest full run (`eval/results-latest.json`, gemma-4-31b-it, 29 cases, one run at temperature 0, 29 Oct): all cases Gemma 26/29, baseline 25/29; the 21 code cases 21/21 for both, so they cannot separate the two; judgment cases Gemma 5/8, baseline 4/8. There were no vetoes, one fallback to the freelancer, and no model errors. The three misses are `j-other-card`, `j-cold-dm-files-first` and `j-pushy-bank-blame`. In `j-other-card` Gemma's reason named the buyer's other card, the reason scrub refused it, and the desk handed the choice back to the freelancer: a lost point, not an unsafe step. The other two picked a new checkout link where stopping was expected.
+
+Read that 5/8 carefully. Three of the five judgment passes (`j-stranger-pay-double`, `j-stranger-files-today`, `j-company-card-restricted`) are on 9500, 9520 and 5180, which the guard rule now decides, so the baseline passes them too. The other two are `j-card-replaced` and `j-payday-friday-pinned`; the pinned Friday case passes for the baseline as well, because its fixed 72 hours falls inside the 60-to-84-hour window. Gemma's only judgment pass the baseline misses is therefore `j-card-replaced`. Three repeat runs of the 8 judgment cases (`eval/results-2026-10-29-judgment-3rep.json`) gave the same result each time: 5 passed in all 3, the same 3 failed in all 3, none flipped. The 6 Oct run, kept in `eval/results-2026-10-28-previous.json` (the file is named for when it was archived; its `ran_at` is 6 Oct) and scored against the pre-change expectations, was 26/29 against 23/29 and 5/8 against 2/8. Those are historical and not comparable to the numbers above.
 
 ## Why a small model, and what it costs
 
-The decision is narrow: pick one of three moves (plus a wait and a one-line reason) from a response code, a short note, an attempt count and a clock. Gemma (`gemma-4-31b-it`) is an open-weights language model, chosen because it is cheap and did well on the eval (26 of 29 cases, but only 5 of 8 on the cases where the note should flip the move, so it is not flawless). It is not special: the model sits behind one function (`askGemma`), and `server.js` already accepts a Gemini model, an OpenAI-compatible endpoint, or Kenari through env vars. Any model that returns the three-field JSON can replace it. The guards, not the model, own the lock and the buyer lines, so a weaker or different model can change the next step but cannot unlock files.
+The decision is narrow: pick one of three moves (plus a wait and a one-line reason) from a response code, a short note, an attempt count and a clock. Gemma (`gemma-4-31b-it`) is an open-weights language model, chosen because it is cheap; on the eval it passes 26 of 29 cases and 5 of 8 judgment cases, but three of those five are codes the guard rule decides, so read the caveats above rather than the headline number. It is not special: the model sits behind one function (`askGemma`), and `aiConfig` in `desk.js` already accepts a Gemini model (`GEMINI_API_KEY`), OpenAI (`OPENAI_API_KEY`), or a Kenari-style OpenAI-compatible endpoint (`KENARI_API_KEY`, with `AI_BASE_URL` and `AI_MODEL`) through env vars. Any model that returns the three-field JSON can replace it. The guards, not the model, own the lock and the buyer lines, so a weaker or different model can change the next step but cannot unlock files.
 
-Cost per decision (estimate, not a measurement of billed usage): the prompt is about 430 tokens (1,167 characters of instructions plus about 565 of case JSON, at roughly 4 characters per token) and the reply is about 60 tokens, assumed. At public per-million-token prices seen on 6 Oct 2026 for Gemma 4 31B, that is between about $0.00006 (OpenRouter, about $0.08 to $0.09 in and $0.34 to $0.35 out) and $0.00008 (DeepInfra via Requesty, $0.13 in and $0.38 out) per decision. So 1,000 declined captures cost roughly $0.06 to $0.08 in model calls, and even ten times the tokens stays under a dollar. Gemma is only called on a declined capture; a `COMPLETED` capture needs no model call.
+Cost per decision (estimate, not a measurement of billed usage): the prompt is about 440 tokens (1,181 characters of instructions plus about 577 of case JSON, at roughly 4 characters per token) and the reply is about 60 tokens, assumed. At public per-million-token prices seen on 6 Oct 2026 for Gemma 4 31B, that is between about $0.00006 (OpenRouter, about $0.08 to $0.09 in and $0.34 to $0.35 out) and $0.00008 (DeepInfra via Requesty, $0.13 in and $0.38 out) per decision. So 1,000 declined captures cost roughly $0.06 to $0.08 in model calls, and even ten times the tokens stays under a dollar. Gemma is only called on a declined capture; a `COMPLETED` capture needs no model call.
 
 Scale scenario (illustrative, not measured): 1,000 declined captures at the demo's USD 25.00 is USD 25,000 of work that Capture Desk keeps locked until a capture is `COMPLETED`. How many of those would otherwise be delivered unpaid, or retried the wrong way, is not known and is not claimed here. The model cost for the whole batch is under USD 0.10.
