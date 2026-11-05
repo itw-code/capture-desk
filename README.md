@@ -4,6 +4,14 @@ A freelancer takes a card payment. PayPal's checkout response can show the order
 
 This app does not start from "explain money already received." The money did not clear. The first call is a live sandbox charge. The model then reads that capture.
 
+## Try it now (hosted demo)
+
+**https://capture-desk-oedlzp2jia-et.a.run.app**
+
+Open the URL, paste your own PayPal sandbox (US merchant) client ID and secret plus your own Gemini key into the connect gate, then press **New checkout**. Nothing is shared between visitors and no credentials are baked into the server. This needs no install and no build.
+
+If you would rather build and run it yourself, the steps below are complete and self-contained; either path satisfies the demo requirement.
+
 ## Get your own credentials (judges)
 
 Do not use anyone else's keys. Create your own:
