@@ -123,7 +123,7 @@ async function complete(user, system) {
 }
 
 async function completeGemini(cfg, user, system) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model)}:generateContent`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.key },
@@ -132,6 +132,9 @@ async function completeGemini(cfg, user, system) {
       contents: [{ role: "user", parts: [{ text: user }] }],
       generationConfig: { temperature: 0 },
     }),
+    // A hung model call would otherwise hold the hosted session's pending slot, and
+    // the ledger behind it, until the socket gave up on its own.
+    signal: AbortSignal.timeout(30000),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`gemini ${res.status}: ${body.error?.message || JSON.stringify(body).slice(0, 300)}`);
@@ -374,7 +377,7 @@ function buildDecision({ order, raw, attempt, aiError }) {
   return decision;
 }
 
-async function askGemma({ order, code, note, earlier, attempt, now }) {
+async function askGemma({ order, code, note, earlier, attempt, now, completeFn = complete }) {
   const allowed = allowedMoves(code, attempt);
   const system = [
     "You are the step after a declined card capture. You choose the freelancer's next step for one job.",
@@ -399,7 +402,7 @@ async function askGemma({ order, code, note, earlier, attempt, now }) {
     current_time: deskClock(now),
     allowed_moves: allowed,
   });
-  const ai = await complete(user, system);
+  const ai = await completeFn(user, system);
   let raw = null;
   let parse_error = null;
   try {
@@ -622,8 +625,141 @@ function jobDetail(store, jobId) {
 // Desk operations — the only implementation of charge/decide/close.
 // ---------------------------------------------------------------------------
 
-function createDesk({ store, storeFile } = {}) {
+// Hosted sessions pass their own sandbox keys. Everything that talks to a provider
+// from such a desk goes through these two functions; nothing outside this closure
+// ever sees the keys, and no failure message may quote them back. PayPal and Gemini
+// report their own errors, but a transport failure can surface a URL or a header
+// echo, so every message is scrubbed before it reaches a caller.
+function scrubSecrets(text, secrets) {
+  let out = String(text == null ? "" : text);
+  for (const secret of secrets) {
+    if (!secret) continue;
+    const raw = String(secret);
+    if (raw.length < 6) continue;
+    const encoded = Buffer.from(raw).toString("base64");
+    out = out.split(raw).join("[redacted]").split(encoded).join("[redacted]");
+  }
+  return out;
+}
+
+const PROVIDER_TIMEOUT_MS = 30000;
+// A refresh of an existing decision is a paid model call, so it is bounded: three
+// calls per order (the first plus two refreshes) and fifty per hosted session.
+const MAX_MODEL_CALLS_PER_ORDER = 3;
+const MAX_MODEL_CALLS_PER_SESSION = 50;
+
+function createDesk({ store, storeFile, credentials, limits } = {}) {
   if (!store) store = openStore(storeFile || defaultStoreFile());
+  const maxJobs = Number.isInteger(limits && limits.maxJobs) ? limits.maxJobs : 0;
+  // A hosted session can be disconnected while one of its calls is still running.
+  // The ledger has to survive that call; the keys must not. Every reference the desk
+  // holds is behind `creds`, and disposeCredentials() is the only thing that drops
+  // them, so "disconnect discards the keys" is true the moment DELETE returns, not
+  // when the last call lands.
+  const isSession = Boolean(credentials);
+  let creds = isSession
+    ? {
+        clientId: credentials.clientId,
+        clientSecret: credentials.clientSecret,
+        geminiApiKey: credentials.geminiApiKey,
+        geminiModel: credentials.geminiModel || "gemma-4-31b-it",
+      }
+    : null;
+  let secrets = creds ? [creds.clientId, creds.clientSecret, creds.geminiApiKey] : [];
+  function safeMessage(err, fallback) {
+    const text = scrubSecrets((err && (err.message || err)) || fallback || "Request failed.", secrets);
+    return String(text).slice(0, 400);
+  }
+  // A provider-supplied string that must reach a caller: scrubbed of this session's
+  // keys and bounded, so an echoing error cannot become an exfiltration channel.
+  function scrub(value) {
+    return String(scrubSecrets(value == null ? "" : value, secrets)).slice(0, 300);
+  }
+  function requireCreds() {
+    if (!creds) throw Object.assign(new Error("This session's credentials have been discarded. Connect again."), { status: 401 });
+    return creds;
+  }
+  const sessionComplete = isSession
+    ? async (user, system) => {
+        const c = requireCreds();
+        try {
+          return await completeGemini({ kind: "gemini", provider: "gemma", model: c.geminiModel, key: c.geminiApiKey }, user, system);
+        } catch (err) {
+          throw new Error(safeMessage(err, "The model call failed."));
+        }
+      }
+    : complete;
+  let sessionToken = null;
+  // One guarded decision per order at a time. The ledger row is the durable cache;
+  // this map only collapses callers that arrive while the first one is still waiting.
+  const deciding = new Map();
+  // Model calls actually spent, per order and per desk. A refresh is a real call on
+  // the session owner's key, so it is counted and capped, unlike a cached read.
+  const modelCalls = new Map();
+  let totalModelCalls = 0;
+  const modelCallCap = isSession ? MAX_MODEL_CALLS_PER_SESSION : Infinity;
+
+  // Drop every secret this desk holds. Called the moment a hosted session is
+  // disconnected, so "the desk discarded your keys" is true when DELETE returns even
+  // though the ledger still has to survive the call that is in flight. A provider
+  // request already on the wire carries its own bearer token and is unaffected; the
+  // next one that needs credentials fails loudly instead of quietly re-authenticating.
+  function disposeCredentials() {
+    creds = null;
+    secrets = [];
+    sessionToken = null;
+  }
+  async function sessionAccessToken() {
+    if (!isSession) return accessToken();
+    const c = requireCreds();
+    if (sessionToken && sessionToken.exp > Date.now() + 15000) return sessionToken;
+    let res;
+    try {
+      res = await fetch(`${PAYPAL}/v1/oauth2/token`, {
+        method: "POST",
+        headers: { Authorization: `Basic ${Buffer.from(`${c.clientId}:${c.clientSecret}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
+        body: "grant_type=client_credentials",
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // A thrown fetch error is a transport failure. Its message is not provably
+      // free of the Authorization header, so it is replaced, not scrubbed.
+      throw new Error(`PayPal could not be reached (${err && err.name === "TimeoutError" ? "timed out" : "network error"}).`);
+    }
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`PayPal authentication failed (HTTP ${res.status})`);
+    if (!body || typeof body.access_token !== "string" || !body.access_token) {
+      throw new Error("PayPal returned no access token.");
+    }
+    sessionToken = { token_type: body.token_type, access_token: body.access_token, exp: Date.now() + (Number(body.expires_in) || 300) * 1000 };
+    return sessionToken;
+  }
+  async function sessionPaypal(method, pathname, json, requestId) {
+    if (!isSession) return paypal(method, pathname, json, requestId);
+    const token = await sessionAccessToken();
+    let res;
+    try {
+      res = await fetch(PAYPAL + pathname, {
+        method,
+        headers: { Authorization: `Bearer ${token.access_token}`, "Content-Type": "application/json", Accept: "application/json", Prefer: "return=representation", ...(method === "POST" ? { "PayPal-Request-Id": requestId || crypto.randomUUID() } : {}) },
+        body: json === undefined ? undefined : JSON.stringify(json),
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+      });
+    } catch (err) {
+      throw new Error(`PayPal could not be reached (${err && err.name === "TimeoutError" ? "timed out" : "network error"}).`);
+    }
+    const text = await res.text().catch(() => "");
+    let body = {};
+    if (text) {
+      try {
+        body = JSON.parse(text);
+      } catch {
+        body = {};
+      }
+    }
+    if (res.status === 401) sessionToken = null;
+    return { status: res.status, body };
+  }
 
   function fail(message, status, extra) {
     return Object.assign(new Error(message), { status: status || 500, ...(extra || {}) });
@@ -675,6 +811,11 @@ function createDesk({ store, storeFile } = {}) {
       if (job.closed) throw fail("This job is closed. Start a new checkout.", 409);
       if (job.paid_on) throw fail("This job is already paid. Files are unlocked.", 409);
     } else {
+      // Hosted sessions cap how many jobs one session may open: every job can cost a
+      // PayPal checkout and a model call, so an open-ended tab is an open-ended bill.
+      if (maxJobs > 0 && store.listJobs(maxJobs).length >= maxJobs) {
+        throw fail("This session has opened all the jobs it can. Disconnect and reconnect to start over.", 429);
+      }
       job = store.ensureJob("job_" + crypto.randomUUID().slice(0, 8), cleanNote(note), now);
       created = true;
     }
@@ -698,7 +839,7 @@ function createDesk({ store, storeFile } = {}) {
     if (claim.replay) return replayOut(claim.replay, job.id);
     let charged;
     try {
-      charged = await paypal("POST", "/v2/checkout/orders", chargeBody(name), claim.requestId);
+      charged = await sessionPaypal("POST", "/v2/checkout/orders", chargeBody(name), claim.requestId);
     } catch (err) {
       store.releaseAttempt(claim.attemptId);
       if (created) store.dropEmptyJob(job.id);
@@ -710,8 +851,23 @@ function createDesk({ store, storeFile } = {}) {
     if (!capture) {
       store.releaseAttempt(claim.attemptId);
       if (created) store.dropEmptyJob(job.id);
-      const text = (order && (order.message || order.name)) || `PayPal returned no capture (HTTP ${charged.status}).`;
-      return { status: charged.status < 300 ? 502 : charged.status, error: text, body: order };
+      // PayPal's own message, never the request that produced it. Scrub anyway:
+      // this string is returned to the browser and stored by callers.
+      const text = safeMessage(order && (order.message || order.name), `PayPal returned no capture (HTTP ${charged.status}).`);
+      // The reduction a hosted session is allowed to see. PayPal's error body can
+      // echo request fields back in a validation `description`, and a raw body would
+      // carry the payer's card data to the wire. Only the whitelisted keys survive,
+      // each scrubbed of this session's secrets and bounded.
+      const hostedError = { error: text };
+      if (order && Array.isArray(order.details)) {
+        const details = order.details
+          .filter((d) => d && typeof d === "object")
+          .map((d) => ({ issue: scrub(d.issue), description: scrub(d.description) }))
+          .filter((d) => d.issue || d.description);
+        if (details.length) hostedError.details = details;
+      }
+      if (order && typeof order.debug_id === "string") hostedError.debug_id = scrub(order.debug_id);
+      return { status: charged.status < 300 ? 502 : charged.status, error: text, body: order, hostedError };
     }
 
     const code = (capture.processor_response && capture.processor_response.response_code) || null;
@@ -765,48 +921,72 @@ function createDesk({ store, storeFile } = {}) {
 
     const attempt = last.attempt_no;
     const status = String(capture.status || "").toUpperCase();
-    let ai = { provider: null, model: null };
-    let raw = null;
-    let aiError = null;
-    // Gemma only runs for a declined capture. A cleared or pending capture has no next step to choose.
-    if (status === "DECLINED") {
-      const code = String((capture.processor_response && capture.processor_response.response_code) || "");
-      try {
-        ai = await askGemma({ order, code, note: job.note, earlier: job.attempts.slice(0, -1), attempt });
-        raw = ai.raw;
-        if (!raw) aiError = ai.parse_error || "Gemma returned no usable JSON.";
-      } catch (err) {
-        aiError = err.message || String(err);
+    const key = last.order_id;
+    // Two tabs, or a retry while the first call is still waiting on the model, must
+    // not spend two model calls for one order. The second caller waits for the first
+    // and then reads the row it stored.
+    if (deciding.has(key)) return deciding.get(key);
+    const work = (async () => {
+      let ai = { provider: null, model: null };
+      let raw = null;
+      let aiError = null;
+      // Gemma only runs for a declined capture. A cleared or pending capture has no next step to choose.
+      if (status === "DECLINED") {
+        const used = modelCalls.get(key) || 0;
+        if (cached && used >= MAX_MODEL_CALLS_PER_ORDER) {
+          throw fail("This decision has been refreshed as often as this desk allows. The stored decision stands.", 429);
+        }
+        if (totalModelCalls >= modelCallCap) {
+          throw fail("This session has used all the model calls it is allowed. Disconnect and reconnect to start over.", 429);
+        }
+        modelCalls.set(key, used + 1);
+        totalModelCalls++;
+        const code = String((capture.processor_response && capture.processor_response.response_code) || "");
+        try {
+          ai = await askGemma({ order, code, note: job.note, earlier: job.attempts.slice(0, -1), attempt, completeFn: sessionComplete });
+          raw = ai.raw;
+          if (!raw) aiError = ai.parse_error || "Gemma returned no usable JSON.";
+        } catch (err) {
+          // aiError is stored in the ledger and echoed by /api/decide, /api/job and
+          // the CLI. A provider message must never carry the session's keys into it.
+          aiError = safeMessage(err, "The model call failed.");
+        }
       }
+      const decision = buildDecision({ order, raw, attempt, aiError });
+      const decidedAt = new Date().toISOString();
+      const notBefore = decision.final && decision.final.next_step === "retry_same_card_later"
+        ? notBeforeFor(decidedAt, decision.final.wait_hours)
+        : null;
+      store.putDecision({
+        orderId: last.order_id,
+        jobId: job.id,
+        attemptNo: attempt,
+        provider: ai.provider,
+        model: ai.model,
+        proposed: decision.proposed,
+        final: decision.final,
+        vetoed: decision.vetoed,
+        vetoReason: decision.veto_reason,
+        fallbackReason: decision.fallback_reason,
+        decidedBy: decision.decided_by,
+        notBefore,
+        decidedAt,
+      });
+      return {
+        cached: false,
+        provider: ai.provider,
+        model: ai.model,
+        decision: { ...decision, not_before: notBefore, decided_at: decidedAt },
+        capture: slimCapture(capture),
+        job: jobView(store.getJob(job.id)),
+      };
+    })();
+    deciding.set(key, work);
+    try {
+      return await work;
+    } finally {
+      deciding.delete(key);
     }
-    const decision = buildDecision({ order, raw, attempt, aiError });
-    const decidedAt = new Date().toISOString();
-    const notBefore = decision.final && decision.final.next_step === "retry_same_card_later"
-      ? notBeforeFor(decidedAt, decision.final.wait_hours)
-      : null;
-    store.putDecision({
-      orderId: last.order_id,
-      jobId: job.id,
-      attemptNo: attempt,
-      provider: ai.provider,
-      model: ai.model,
-      proposed: decision.proposed,
-      final: decision.final,
-      vetoed: decision.vetoed,
-      vetoReason: decision.veto_reason,
-      fallbackReason: decision.fallback_reason,
-      decidedBy: decision.decided_by,
-      notBefore,
-      decidedAt,
-    });
-    return {
-      cached: false,
-      provider: ai.provider,
-      model: ai.model,
-      decision: { ...decision, not_before: notBefore, decided_at: decidedAt },
-      capture: slimCapture(capture),
-      job: jobView(store.getJob(job.id)),
-    };
   }
 
   function decisionFromRowCached(row) {
@@ -816,7 +996,7 @@ function createDesk({ store, storeFile } = {}) {
   async function reread(orderId) {
     // A fresh read of an order this desk charged, straight from PayPal. Other ids are refused.
     if (!store.ownsOrder(orderId)) throw fail("unknown order", 404);
-    const read = await paypal("GET", "/v2/checkout/orders/" + encodeURIComponent(orderId));
+    const read = await sessionPaypal("GET", "/v2/checkout/orders/" + encodeURIComponent(orderId));
     if (read.status >= 300) throw fail("PayPal could not read this order.", read.status);
     const capture = firstCapture(read.body);
     const readAt = new Date().toISOString();
@@ -900,10 +1080,10 @@ function createDesk({ store, storeFile } = {}) {
 
   function health() {
     return {
-      paypal: Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
-      ai: aiConfig().provider || aiConfig().kind,
+      paypal: isSession ? Boolean(creds) : Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET),
+      ai: isSession ? (creds ? "gemma" : "none") : aiConfig().provider || aiConfig().kind,
       sandbox: PAYPAL,
-      db: store.file,
+      db: isSession ? ":memory:" : store.file,
     };
   }
 
@@ -911,11 +1091,47 @@ function createDesk({ store, storeFile } = {}) {
     const base = health();
     if (!base.paypal) return { ...base, paypal_ok: false };
     try {
-      await accessToken();
+      await sessionAccessToken();
       return { ...base, paypal_ok: true };
     } catch (err) {
-      return { ...base, paypal_ok: false, paypal_error: err.message };
+      return { ...base, paypal_ok: false, paypal_error: safeMessage(err, "PayPal refused the credentials.") };
     }
+  }
+
+  // A hosted connect may prove the Gemini key too. `models.list` is a metadata read:
+  // it costs no generation quota and no model call, so a stranger cannot turn a
+  // connect into a bill. It is deliberately not a call for one model name — the key
+  // is what is being checked, and a renamed model must not read as a bad key. Only
+  // an outright rejection (invalid key, missing permission) is fatal; a transient
+  // 5xx leaves the session usable and the page reports the model's health on load.
+  async function probeGemini() {
+    if (!isSession) return { verified: aiConfig().kind !== "none", rejected: false };
+    const c = requireCreds();
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1", {
+        headers: { "x-goog-api-key": c.geminiApiKey },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) return { verified: true, rejected: false };
+      const body = await res.json().catch(() => ({}));
+      const info = (body && body.error) || {};
+      const reason = String(info.status || "") + " " + String(info.message || "");
+      const rejected = res.status === 401 || res.status === 403 || (res.status === 400 && /API_KEY_INVALID|API key not valid|API key expired/i.test(reason));
+      return { verified: false, rejected };
+    } catch {
+      return { verified: false, rejected: false };
+    }
+  }
+
+  // What a hosted connect needs to know before it answers 201.
+  async function verifyCredentials() {
+    const [paypalProbe, geminiProbe] = await Promise.all([liveHealth(), probeGemini()]);
+    return {
+      paypal_ok: paypalProbe.paypal_ok === true,
+      paypal_error: paypalProbe.paypal_error || null,
+      gemini_verified: geminiProbe.verified === true,
+      gemini_rejected: geminiProbe.rejected === true,
+    };
   }
 
   async function selfCheck() {
@@ -933,29 +1149,34 @@ function createDesk({ store, storeFile } = {}) {
       code = code || 2;
     } else {
       try {
-        const token = await accessToken();
+        // A hosted session's own key is what must be checked, not the process env.
+        const token = await sessionAccessToken();
         lines.push(`paypal: ok  token=${token.token_type}`);
       } catch (err) {
-        lines.push(`paypal: failed  ${err.message}`);
+        lines.push(`paypal: failed  ${safeMessage(err, "PayPal refused the credentials.")}`);
         code = code || 1;
       }
     }
-    if (aiConfig().kind === "none") {
+    // In a hosted session `ai` comes from the session's Gemini key, so the env-based
+    // config answers "none" even though the desk has a working model. Ask the desk
+    // it actually has.
+    const aiKind = isSession ? "gemini" : aiConfig().kind;
+    if (aiKind === "none") {
       lines.push("ai: missing KENARI_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY");
       code = code || 2;
     } else {
       try {
-        const ping = await complete("Reply with the single word ok. No punctuation.", "You answer with exactly one word.");
-        lines.push(`ai: ok  provider=${ping.provider}  model=${ping.model}  reply=${JSON.stringify(ping.text.trim())}`);
+        const ping = await sessionComplete("Reply with the single word ok. No punctuation.", "You answer with exactly one word.");
+        lines.push(`ai: ok  provider=${ping.provider}  model=${ping.model}  reply=${JSON.stringify(String(ping.text || "").trim())}`);
       } catch (err) {
-        lines.push(`ai: failed  ${err.message}`);
+        lines.push(`ai: failed  ${safeMessage(err, "The model call failed.")}`);
         code = code || 1;
       }
     }
     return { code, lines };
   }
 
-  return { store, charge, decide, reread, status, close, reconcile, health, liveHealth, selfCheck };
+  return { store, charge, decide, reread, status, close, reconcile, health, liveHealth, probeGemini, verifyCredentials, selfCheck, disposeCredentials };
 }
 
 // .env can clear PORT, so harnesses get a knob it cannot clobber.

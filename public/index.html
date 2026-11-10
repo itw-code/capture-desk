@@ -242,6 +242,123 @@
       line-height: 1.45;
       color: var(--text);
     }
+    .session { margin-bottom: 16px; }
+    .session:focus, .session:focus-visible { outline: none; }
+    .session-head {
+      margin: 0 0 6px;
+      font-family: var(--bold);
+      font-size: 20px;
+      font-weight: normal;
+      line-height: 1.3;
+      color: var(--ink);
+    }
+    .session-sub { margin: 0; color: var(--muted); font-size: 14px; }
+    .gate-note {
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      background: var(--bg);
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .gate-note[data-tone="hold"] { background: #fff5f5; color: var(--hold); }
+    .session form { display: grid; gap: 14px; margin-top: 16px; }
+    .session fieldset {
+      display: grid;
+      gap: 14px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      min-width: 0;
+    }
+    .session legend {
+      padding: 0;
+      margin-bottom: 2px;
+      font-family: var(--medium);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .session input {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      padding: 0 12px;
+      font-family: var(--sans);
+      font-size: 16px;
+    }
+    .session input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .session input:disabled { opacity: .55; }
+    .session .toggle { display: block; }
+    .session .toggle label { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .session .toggle input { width: auto; min-height: 0; margin: 0; accent-color: var(--blue); }
+    .session .toggle input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .session .error { margin: 0; }
+    .session-error:focus { outline: none; }
+    .session-status { margin: 12px 0 0; color: var(--muted); font-size: 13px; min-height: 1.2em; }
+    .session-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin: 0 0 16px;
+      padding: 12px 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .session-bar p { margin: 0; font-size: 14px; color: var(--text); }
+    .session-bar .session-note { margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .session-bar .session-note[data-tone="hold"] { color: var(--hold); }
+    .session-bar .sandbox {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 99px;
+      background: var(--blue-wash);
+      color: var(--blue-deep);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .session-bar button {
+      width: auto;
+      min-height: 40px;
+      padding: 0 16px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--blue-deep);
+      border: 1px solid var(--blue-deep);
+    }
+    .session-bar button:hover { background: var(--blue-wash); }
+    .story-card {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .story-card p { margin: 0; font-size: 14px; }
+    .story-card .label { font-family: var(--medium); color: var(--ink); }
+    .story-card .note { margin-top: 4px; color: var(--muted); }
+    .story-card a {
+      display: inline-block;
+      margin-top: 10px;
+      color: var(--blue-deep);
+      font-family: var(--medium);
+      font-size: 14px;
+    }
+    .story-card a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .notlive {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 99px;
+      background: #fff5f5;
+      color: var(--hold);
+      font-size: 11px;
+      white-space: nowrap;
+    }
     @media (max-width: 420px) {
       main { width: min(640px, calc(100% - 24px)); padding-top: 16px; }
       .panel { padding: 16px; }
@@ -252,8 +369,57 @@
 </head>
 <body>
   <main>
-    <p id="problem" class="problem">Checkout can say completed while the charge is declined. This holds your files until the money clears.</p>
-    <article id="panel" class="panel" data-state="before">
+    <p id="boot" class="meta" role="status" aria-live="polite">Checking your session…</p>
+    <section id="gate" class="panel session" hidden aria-labelledby="gate-title" tabindex="-1">
+      <h1 id="gate-title" class="session-head">Connect your PayPal sandbox</h1>
+      <p id="gate-desc" class="session-sub">This hosted desk runs on your own sandbox app and your own Gemini key. Nothing is saved in this browser: the fields live in this page only while it is open, and the desk holds them in its memory for this session. Connect checks both keys first: PayPal with a real API call, Gemini with a free model-list read. A rejected pair or key fails right here; if Google cannot be reached for that read, the Gemini key is confirmed on the first decision instead.</p>
+      <p id="gate-expiry" class="session-sub">The session ends after 30 minutes idle, and after 4 hours even if you keep working. It also ends when the desk restarts. Disconnect discards your keys and the session cookie — if a charge or decision is still running at that moment, the desk finishes it first, then discards them.</p>
+      <p id="gate-note" class="gate-note" role="status" hidden></p>
+      <form id="gate-form" novalidate aria-labelledby="gate-title" aria-describedby="gate-desc gate-expiry">
+        <fieldset>
+          <legend>PayPal sandbox REST app · developer.paypal.com</legend>
+          <div class="field">
+            <label for="client-id">Sandbox client ID</label>
+            <input id="client-id" name="client_id" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" required aria-describedby="client-id-hint" />
+            <p id="client-id-hint" class="hint">The client ID from your sandbox app, not a live app.</p>
+          </div>
+          <div class="field">
+            <label for="client-secret">Sandbox client secret</label>
+            <input id="client-secret" name="client_secret" type="password" autocomplete="off" spellcheck="false" required aria-describedby="client-secret-hint" />
+            <p id="client-secret-hint" class="hint">Sent once to the desk and held in memory for this session only.</p>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Gemini · the model that proposes the next step</legend>
+          <div class="field">
+            <label for="gemini-key">Gemini API key</label>
+            <input id="gemini-key" name="gemini_api_key" type="password" autocomplete="off" spellcheck="false" required aria-describedby="gemini-hint" />
+            <p id="gemini-hint" class="hint">Checked once when you connect by listing available models — a free metadata read, not a generation. It is then used for the fixed Gemini endpoint. The desk still decides; the model only proposes.</p>
+          </div>
+        </fieldset>
+        <div class="field toggle">
+          <label for="show-keys"><input id="show-keys" type="checkbox" /> Show the secret and key while I type</label>
+        </div>
+        <button id="gate-connect" type="submit">Connect sandbox</button>
+        <p id="gate-status" class="session-status" role="status" aria-live="polite"></p>
+        <p id="gate-error" class="error session-error" role="alert" tabindex="-1" hidden></p>
+      </form>
+    </section>
+    <section id="template" class="panel session" hidden aria-labelledby="template-title">
+      <h2 id="template-title" class="session-head">What the desk does <span class="notlive">Template · not live</span></h2>
+      <p class="session-sub">This page is a walkthrough. No charge runs here, no transaction is simulated, and nothing on this screen is a live payment.</p>
+      <p class="session-sub">The story page shows the same flow with sandbox examples: a checkout that says the order completed while the capture was declined, the files that stay locked, and the retry only you can approve.</p>
+      <p class="session-sub"><a href="/story">Read the Capture Desk story</a></p>
+    </section>
+    <div id="session-bar" class="session-bar" hidden>
+      <div>
+        <p>Connected to your PayPal sandbox <span class="sandbox">Sandbox</span></p>
+        <p id="session-note" class="session-note"></p>
+      </div>
+      <button id="disconnect" type="button">Disconnect</button>
+    </div>
+    <p id="problem" class="problem" hidden>Checkout can say completed while the charge is declined. This holds your files until the money clears.</p>
+    <article id="panel" class="panel" data-state="before" hidden>
       <h1>Capture Desk · works with PayPal checkout</h1>
       <p id="job-name" class="job-name">Freelance delivery: final files</p>
       <p id="amount" class="amount" hidden></p>
@@ -272,7 +438,7 @@
         <button id="again" type="button">New checkout</button>
       </div>
     </article>
-    <details class="record">
+    <details class="record" id="record-block" hidden>
       <summary>PayPal record</summary>
       <p id="health" class="meta"></p>
       <p class="meta">Sandbox note: Approve runs the next checkout right away. The sandbox skips the retry wait; the time the desk would wait until is decision.not_before.</p>
@@ -516,23 +682,339 @@
       $("checkout").hidden = true;
     }
 
+    // Hosted mode is decided by the server, never guessed here: a local desk answers
+    // hosted:false and every extra control stays out of the page.
+    let sessionMode = null; // "local" | "hosted"
+    let sessionConnected = false;
+    // The hosted desk refuses a state-changing call without this header. The value is
+    // not the cookie: it comes from GET /api/session and from the POST that creates the
+    // session, so another origin cannot read it. It lives in this page's memory only.
+    let csrfToken = null;
+    // State-changing calls that have been sent and not yet answered. The desk cannot
+    // drop a session's keys while one of these is still running, and the page must not
+    // claim otherwise when the user disconnects.
+    let inFlightOps = 0;
+
+    function csrfHeaders(method, headers) {
+      const m = String(method || "GET").toUpperCase();
+      // Token presence decides, not a mode flag: a token only ever exists for a hosted
+      // session, and a missing one is recovered by the refresh path in api().
+      if (m === "GET" || m === "HEAD" || !csrfToken) return headers;
+      return { ...(headers || {}), "x-csrf-token": csrfToken };
+    }
+
     async function api(path, opts) {
-      const res = await fetch(path, opts);
+      const { _retried, ...options } = opts || {};
+      const method = options.method || "GET";
+      options.headers = csrfHeaders(method, options.headers);
+      // The desk keeps the keys until every call already running has landed, so the
+      // page must know whether one is still out when the user disconnects.
+      const tracked = path !== "/api/session" && method !== "GET" && method !== "HEAD";
+      if (tracked) inFlightOps++;
+      let res;
+      try {
+        res = await fetch(path, options);
+      } catch (err) {
+        if (tracked) inFlightOps--;
+        throw err;
+      }
       const text = await res.text();
       let body = {};
       try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+      if (tracked) inFlightOps--;
       if (!res.ok) {
+        // The token rotates with the session. One silent refresh-and-retry keeps a
+        // long-open tab working instead of blaming the user's keys.
+        const isDelete = String(options.method || "").toUpperCase() === "DELETE";
+        const csrfFailure = res.status === 403 && /csrf/i.test(String(body.error || ""));
+        if (!_retried && (path !== "/api/session" || isDelete) && csrfFailure) {
+          try {
+            const fresh = await api("/api/session");
+            if (fresh && fresh.connected === true && fresh.csrf) {
+              csrfToken = fresh.csrf;
+              return api(path, { ...(opts || {}), _retried: true });
+            }
+          } catch {
+            // Fall through: the original failure is what the caller must see.
+          }
+          // No session to borrow a token from: the desk has already forgotten this tab.
+          csrfToken = null;
+          sessionLost("Your sandbox session ended. Connect your sandbox again to keep working.");
+        }
+        // A cookie that expired while the tab sat open looks like any other failure.
+        // Operational calls answered with 401 mean the hosted session is gone.
+        if (res.status === 401 && sessionMode === "hosted" && path !== "/api/session") {
+          csrfToken = null;
+          sessionLost("Your sandbox session ended. Connect your sandbox again to keep working.");
+        }
         const issue = body.details && body.details[0];
         const detail = issue
           ? issue.issue + (issue.description ? ": " + issue.description : "")
           : (body.message || body.error_description || body.name || body.error || res.statusText);
-        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+        const err = new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+        err.status = res.status;
+        if (typeof body.debug_id === "string" && body.debug_id) err.debugId = body.debug_id;
+        throw err;
       }
+      // Keep the token in step with whatever the desk just told us it is.
+      if (body && typeof body.csrf === "string") csrfToken = body.csrf;
+      else if (body && body.hosted === true && body.connected === false) csrfToken = null;
       return body;
+    }
+
+    function showDesk() {
+      $("problem").hidden = false;
+      $("panel").hidden = false;
+      $("record-block").hidden = false;
+    }
+
+    function hideDesk() {
+      $("panel").hidden = true;
+      $("record-block").hidden = true;
+      $("problem").hidden = true;
+      $("waitbar").hidden = true;
+      $("error").hidden = true;
+      $("error").textContent = "";
+    }
+
+    function revealKeys(on) {
+      const type = on ? "text" : "password";
+      $("client-secret").type = type;
+      $("gemini-key").type = type;
+    }
+
+    function clearGateForm() {
+      $("client-id").value = "";
+      $("client-secret").value = "";
+      $("gemini-key").value = "";
+      $("show-keys").checked = false;
+      revealKeys(false);
+    }
+
+    // Gate first, desk second. The note explains why the gate is back, so an expired
+    // cookie does not look like a page that simply forgot what it was doing.
+    function showGate(note, tone) {
+      const gateWasHidden = $("gate").hidden;
+      sessionConnected = false;
+      hideDesk();
+      $("session-bar").hidden = true;
+      $("template").hidden = false;
+      $("gate").hidden = false;
+      $("boot").hidden = true;
+      $("gate-status").textContent = "";
+      $("gate-error").hidden = true;
+      $("gate-error").textContent = "";
+      const n = $("gate-note");
+      if (note) {
+        n.hidden = false;
+        n.dataset.tone = tone || "";
+        n.textContent = note;
+      } else {
+        n.textContent = "";
+        delete n.dataset.tone;
+        n.hidden = true;
+      }
+      if (note) $("gate").focus();
+      else if (gateWasHidden) $("client-id").focus();
+    }
+
+    function setSessionNote(text, tone) {
+      const note = $("session-note");
+      note.textContent = text || "";
+      if (tone) note.dataset.tone = tone;
+      else delete note.dataset.tone;
+    }
+
+    function showConnected(withSessionBar) {
+      sessionConnected = true;
+      $("gate").hidden = true;
+      $("template").hidden = true;
+      $("session-bar").hidden = !withSessionBar;
+      if (!withSessionBar) setSessionNote("");
+      $("boot").hidden = true;
+      showDesk();
+    }
+
+    function sessionLost(message) {
+      if (sessionMode !== "hosted") return;
+      csrfToken = null;
+      clearGateForm();
+      showGate(message, "hold");
+    }
+
+    async function connectSession() {
+      const err = $("gate-error");
+      const status = $("gate-status");
+      const btn = $("gate-connect");
+      const clientId = $("client-id").value.trim();
+      const clientSecret = $("client-secret").value;
+      const geminiKey = $("gemini-key").value.trim();
+      err.hidden = true;
+      err.textContent = "";
+      if (!clientId || !clientSecret || !geminiKey) {
+        err.textContent = "Fill in the sandbox client ID, the sandbox client secret, and the Gemini API key.";
+        err.hidden = false;
+        err.focus();
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = "Connecting…";
+      status.textContent = "Checking your sandbox keys with PayPal and Gemini. This can take a moment.";
+      try {
+        const opened = await api("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, gemini_api_key: geminiKey }),
+        });
+        // The desk holds the keys now; the page keeps none of them.
+        clearGateForm();
+        status.textContent = "";
+        showConnected(true);
+        // The desk proves the PayPal pair and, when it can, the Gemini key. A key it
+        // could not confirm right now is not a key it rejected, and the copy says so.
+        if (opened && opened.gemini_verified === true) setSessionNote("Gemini key confirmed.");
+        else setSessionNote("Gemini key not confirmed yet — it is checked on the first decision.", "hold");
+        await loadSafe();
+      } catch (e) {
+        // The desk's own error text is written for the person reading it and names the
+        // key that failed (PayPal pair, Gemini key, or an unreachable PayPal). Show it
+        // as-is; only invent wording when the body carried none.
+        const said = String(e.message || "").trim();
+        const bare = !said || /^(unauthorized|forbidden|bad request|conflict|internal server error|service unavailable|too many requests)$/i.test(said);
+        let why = bare ? "The desk could not open a session. Check the three values and try again." : said;
+        if (e.status === 409) {
+          // Two causes share 409: another tab already connected this browser, or the
+          // desk is still winding down this cookie's previous session. Adopt the live
+          // session when there is one; otherwise the server's own sentence is the
+          // accurate answer ("still finishing your last operation"), so keep it.
+          let adopted = false;
+          try {
+            const again = await api("/api/session");
+            if (again && again.connected === true) {
+              adopted = true;
+              clearGateForm();
+              status.textContent = "";
+              showConnected(true);
+              setSessionNote("Already connected in this browser. Gemini key status is checked on this session's first decision.", "hold");
+              await loadSafe();
+            }
+          } catch {
+            // Fall through: report the 409 text below.
+          }
+          if (adopted) return;
+          why = bare ? "This browser still has a session being closed. Wait a moment, then connect again." : said;
+        }
+        err.textContent = "Could not connect. " + why;
+        err.hidden = false;
+        err.focus();
+        status.textContent = "";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Connect sandbox";
+      }
+    }
+
+    async function disconnectSession() {
+      const btn = $("disconnect");
+      // Sample this before the DELETE: the desk refuses nothing here, it finishes the
+      // calls it already started and drops the keys when the last one lands.
+      const stillWorking = inFlightOps > 0;
+      btn.disabled = true;
+      btn.textContent = "Disconnecting…";
+      let dropped = true;
+      try {
+        await api("/api/session", { method: "DELETE" });
+      } catch {
+        dropped = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Disconnect";
+      }
+      order = null;
+      job = null;
+      setJobId(null);
+      $("record").textContent = "No charge yet.";
+      $("health").textContent = "";
+      clearGateForm();
+      let note;
+      if (!dropped) {
+        note = "The desk could not confirm the disconnect. Nothing from this page is kept either way; connect again to start a fresh session.";
+      } else if (stillWorking) {
+        note = "Disconnected. One call was still running, so the desk discards your sandbox keys and the session cookie as soon as that call finishes.";
+      } else {
+        note = "Disconnected. The desk discarded your sandbox keys and the session cookie.";
+      }
+      showGate(note, "hold");
+      $("gate-status").textContent = "";
+    }
+
+    async function boot() {
+      let session;
+      try {
+        session = await api("/api/session");
+      } catch (e) {
+        // A server that predates the session endpoint has no hosted mode: keep the
+        // local desk working exactly as before instead of showing a dead page.
+        if (e.status === 404 || e.status === 405) {
+          sessionMode = "local";
+          showConnected(false);
+          await loadSafe();
+          return;
+        }
+        if (e.status === 403) {
+          // The hosted desk refuses plain HTTP outright. Saying "session ended" there
+          // would send the user hunting for keys that were never the problem.
+          if (/https is required/i.test(e.message || "")) {
+            $("boot").hidden = false;
+            $("boot").textContent = "This desk only runs over HTTPS. Open the hosted address again over https:// and connect your sandbox there.";
+            $("template").hidden = false;
+            return;
+          }
+          sessionMode = "hosted";
+          showGate("Your sandbox session ended. Connect your sandbox again to keep working.", "hold");
+          return;
+        }
+        if (e.status === 401) {
+          sessionMode = "hosted";
+          showGate("Your sandbox session ended. Connect your sandbox again to keep working.", "hold");
+          return;
+        }
+        $("boot").textContent = "The desk could not be reached: " + (e.message || String(e));
+        $("template").hidden = false;
+        return;
+      }
+      if (!session || session.hosted !== true) {
+        // Local desk: unchanged, no gate and no credential fields.
+        sessionMode = "local";
+        showConnected(false);
+        await loadSafe();
+        return;
+      }
+      sessionMode = "hosted";
+      if (session.connected === true) {
+        showConnected(true);
+        setSessionNote("Session resumed. Your keys stay in the desk's memory until you disconnect.");
+        await loadSafe();
+      } else {
+        showGate();
+      }
+    }
+
+    // A failed read after the gate opened must not strand the page on a blank desk.
+    async function loadSafe() {
+      try {
+        await load();
+      } catch (e) {
+        $("health").textContent = e.message || String(e);
+        $("error").hidden = false;
+        $("error").textContent = "The desk could not be read: " + (e.message || String(e));
+      }
     }
 
     async function load() {
       showBefore();
+      $("error").hidden = true;
+      $("error").textContent = "";
       const [health, triggers] = await Promise.all([api("/api/health"), api("/api/triggers")]);
       const paypalBit = health.paypal_ok ? "PayPal sandbox live" : health.paypal ? "PayPal key rejected" : "PayPal key missing";
       $("health").textContent = paypalBit + " · AI " + health.ai;
@@ -642,11 +1124,15 @@
       } catch (err) {
         order = null;
         if (!sameJob) { job = null; setJobId(null); }
+        // If the session ended, the gate already explains it; repainting the panel
+        // would only write a stale message into a hidden card.
+        if (sessionMode === "hosted" && !sessionConnected) return;
         showBefore();
         $("problem").hidden = true;
         $("error").hidden = false;
-        $("error").textContent = err.message || String(err);
-        $("record").textContent = err.message || String(err);
+        const shown = (err.message || String(err)) + (err.debugId ? " (PayPal debug ID " + err.debugId + ")" : "");
+        $("error").textContent = shown;
+        $("record").textContent = shown;
       } finally {
         lockControls(false);
       }
@@ -674,7 +1160,29 @@
 
     $("again").onclick = () => runCharge(false);
 
-    load().catch((err) => { $("health").textContent = err.message; });
+    $("gate-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      connectSession();
+    });
+    $("show-keys").addEventListener("change", (e) => revealKeys(e.target.checked));
+    $("disconnect").addEventListener("click", disconnectSession);
+    // A hosted tab that regains focus may have outlived its cookie. Check quietly and
+    // put the gate back only when the desk says the session is gone.
+    window.addEventListener("focus", async () => {
+      if (sessionMode !== "hosted" || !sessionConnected) return;
+      try {
+        const s = await api("/api/session");
+        if (!s || s.connected !== true) sessionLost("Your sandbox session ended. Connect your sandbox again to keep working.");
+      } catch {
+        // Offline or a gateway blip is not proof of an ended session; the next real
+        // call will report it.
+      }
+    });
+
+    boot().catch((err) => {
+      $("boot").hidden = false;
+      $("boot").textContent = "The desk could not be loaded: " + (err.message || String(err));
+    });
   </script>
 </body>
 </html>

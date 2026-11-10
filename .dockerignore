@@ -1,0 +1,20 @@
+# Nothing secret or local goes into the hosted image.
+.env
+.env.*
+!.env.example
+
+# Local runtime state and generated results
+*.db
+*.db-wal
+*.db-shm
+eval/
+reel/
+research/
+_archive-*/
+.hermes/
+.git/
+
+# Docs and local-only working artifacts
+*.md
+*-local.*
+codebase-map-local.html

@@ -40,3 +40,5 @@ CAPTURE-DESK-AGENT-TOOL.md
 reel/v11/**/*.mp4
 # reel tooling holds local paths; the video goes to YouTube, not the repo
 reel/
+.wrangler/
+*-local.md.bak-*

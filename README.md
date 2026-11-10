@@ -4,6 +4,10 @@ A freelancer takes a card payment. PayPal's checkout response can show the order
 
 This app does not start from "explain money already received." The money did not clear. The first call is a live sandbox charge. The model then reads that capture.
 
+**Demo video (1:48): https://youtu.be/dT4zYMfvd18**
+
+In one line: a live PayPal sandbox card charge whose order says `COMPLETED` while the capture says `DECLINED`; the desk reads the capture, locks the deliverables, and asks Gemma for the freelancer's next step while hard guards veto unsafe moves and write every buyer-facing line themselves. PayPal is used through the real Orders API (create order → card capture → re-read); the AI is one constrained JSON decision (`retry later` / `new link` / `stop chasing` + wait hours + reason) on a declined capture only.
+
 ## Try it now (hosted demo)
 
 **https://capture-desk-oedlzp2jia-et.a.run.app**
@@ -11,6 +15,13 @@ This app does not start from "explain money already received." The money did not
 Open the URL, paste your own PayPal sandbox (US merchant) client ID and secret plus your own Gemini key into the connect gate, then press **New checkout**. Nothing is shared between visitors and no credentials are baked into the server. This needs no install and no build.
 
 If you would rather build and run it yourself, the steps below are complete and self-contained; either path satisfies the demo requirement.
+
+## Prerequisites
+
+- **Node.js 22.13 or newer** (`node --version` to check). The server uses built-in `fetch`, and job state lives in `node:sqlite` without an experimental flag.
+- A **PayPal sandbox US merchant** client ID and secret (how to get one below).
+- A **Google AI / Gemma API key** (how to get one below).
+- Nothing to install: the app has **zero npm dependencies**.
 
 ## Get your own credentials (judges)
 
@@ -26,6 +37,22 @@ Do not use anyone else's keys. Create your own:
 2. **Gemma / Google AI key**
    - Create an API key in [Google AI Studio](https://aistudio.google.com/apikey) (or your Google AI / Gemini developer console).
    - Put it in `.env` as `GEMINI_API_KEY`. The default model is `gemma-4-31b-it` (`AI_MODEL`).
+
+## Environment variables (names only — never commit values)
+
+Copy `.env.example` to `.env` and fill in the values. `.env` is git-ignored.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `PAYPAL_CLIENT_ID` | yes | PayPal **sandbox US merchant** app client ID |
+| `PAYPAL_CLIENT_SECRET` | yes | Secret for that app |
+| `GEMINI_API_KEY` | yes | Google AI key for the Gemma model |
+| `AI_MODEL` | no | Model id, default `gemma-4-31b-it` |
+| `PORT` | no | HTTP port, default `8790` |
+| `OPENAI_API_KEY` | no | Alternative AI provider (replaces `GEMINI_API_KEY`) |
+| `KENARI_API_KEY` | no | Alternative OpenAI-compatible endpoint (with `AI_BASE_URL`) |
+| `DESK_HOSTED` | no | `1` = hosted mode: no `.env`, visitors supply their own keys in the page |
+| `DESK_TRUST_PROXY` / `DESK_TRUSTED_PROXIES` / `DESK_INSECURE_LOCAL` / `DESK_PORT` | no | Hosted-mode proxy and port knobs (see `.env.example`) |
 
 ## Run
 
@@ -141,3 +168,7 @@ The decision is narrow: pick one of three moves (plus a wait and a one-line reas
 Cost per decision (estimate, not a measurement of billed usage): the prompt is about 440 tokens (1,181 characters of instructions plus about 577 of case JSON, at roughly 4 characters per token) and the reply is about 60 tokens, assumed. At public per-million-token prices seen on 6 Oct 2026 for Gemma 4 31B, that is between about $0.00006 (OpenRouter, about $0.08 to $0.09 in and $0.34 to $0.35 out) and $0.00008 (DeepInfra via Requesty, $0.13 in and $0.38 out) per decision. So 1,000 declined captures cost roughly $0.06 to $0.08 in model calls, and even ten times the tokens stays under a dollar. Gemma is only called on a declined capture; a `COMPLETED` capture needs no model call.
 
 Scale scenario (illustrative, not measured): 1,000 declined captures at the demo's USD 25.00 is USD 25,000 of work that Capture Desk keeps locked until a capture is `COMPLETED`. How many of those would otherwise be delivered unpaid, or retried the wrong way, is not known and is not claimed here. The model cost for the whole batch is under USD 0.10.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
